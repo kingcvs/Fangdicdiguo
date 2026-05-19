@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    <title>房地产帝国 - 公司模拟经营</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- 主菜单 -->
+    <div id="mainMenu" class="main-menu">
+        <div class="menu-container">
+            <div class="game-logo">
+                <div class="logo-icon"></div>
+                <h1 class="game-title">房地产帝国</h1>
+                <p class="game-subtitle">公司模拟经营</p>
+            </div>
+            
+            <div class="menu-buttons">
+                <button class="menu-btn primary" onclick="MenuSystem.newGame()">
+                    <span class="btn-icon">🎮</span>
+                    <span>开始游戏</span>
+                </button>
+                <button class="menu-btn" id="continueBtn" onclick="MenuSystem.continueGame()">
+                    <span class="btn-icon">▶️</span>
+                    <span>继续游戏</span>
+                </button>
+                <button class="menu-btn" onclick="MenuSystem.showSaveManager()">
+                    <span class="btn-icon">💾</span>
+                    <span>存档管理</span>
+                </button>
+                <button class="menu-btn" onclick="MenuSystem.showChangelog()">
+                    <span class="btn-icon">📝</span>
+                    <span>更新日志</span>
+                </button>
+            </div>
+            
+            <div class="game-version" id="gameVersion">
+                v0.2
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="app" class="game-app" style="display: none;">
+        <!-- 顶部时间栏 -->
+        <header id="header" class="header">
+            <div class="date-display" id="dateDisplay">2024年1月1日</div>
+            <div class="time-controls">
+                <button id="pauseBtn" class="time-btn active">⏸</button>
+                <button id="speed1x" class="time-btn" data-speed="1">1x</button>
+                <button id="speed2x" class="time-btn" data-speed="2">2x</button>
+                <button id="speed3x" class="time-btn" data-speed="3">3x</button>
+                <button class="time-btn" onclick="MenuSystem.returnToMenu()" title="返回菜单">🏠</button>
+            </div>
+        </header>
+
+        <!-- 主内容区域 -->
+        <main id="mainContent" class="main-content">
+            <!-- 动态加载页面内容 -->
+        </main>
+
+        <!-- 底部导航 -->
+        <nav id="bottomNav" class="bottom-nav">
+            <div class="nav-row">
+                <button class="nav-item active" data-page="overview">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">总览</span>
+                </button>
+                <button class="nav-item" data-page="investment">
+                    <span class="nav-icon">🏗️</span>
+                    <span class="nav-label">投资</span>
+                </button>
+                <button class="nav-item" data-page="project">
+                    <span class="nav-icon">📍</span>
+                    <span class="nav-label">项目</span>
+                </button>
+                <button class="nav-item" data-page="marketing">
+                    <span class="nav-icon">💎</span>
+                    <span class="nav-label">营销</span>
+                </button>
+                <button class="nav-item" data-page="operation">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">运营</span>
+                </button>
+            </div>
+            <div class="nav-row">
+                <button class="nav-item" data-page="capital">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-label">资本</span>
+                </button>
+                <button class="nav-item" data-page="brand">
+                    <span class="nav-icon">🏷️</span>
+                    <span class="nav-label">品牌</span>
+                </button>
+                <button class="nav-item" data-page="personal">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-label">个人</span>
+                </button>
+                <button class="nav-item" data-page="governance">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-label">治理</span>
+                </button>
+                <button class="nav-item" data-page="settings">
+                    <span class="nav-icon">⭐</span>
+                    <span class="nav-label">设置</span>
+                </button>
+            </div>
+        </nav>
+    </div>
+
+    <script src="game/types.js"></script>
+    <script src="game/initialData.js"></script>
+    <script src="game/utils.js"></script>
+    <script src="game/gameState.js"></script>
+    <script src="game/timeSystem.js"></script>
+    <script src="game/accounting.js"></script>
+    <script src="game/economy.js"></script>
+    <script src="game/actions.js"></script>
+    <script src="game/menuSystem.js"></script>
+    <script src="ui/components.js"></script>
+    <script src="ui/pages.js"></script>
+    <script src="ui/app.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
