@@ -416,26 +416,29 @@ const Pages = {
         
         // 标签页内容
         switch (activeTab) {
-            case 'certificates':
-                html += this.renderCertificatesTab(project, state);
+            case 'preparation':
+                html += this.renderPreparationTab(project, state);
                 break;
-            case 'design':
-                html += this.renderDesignTab(project);
+            case 'approval':
+                html += this.renderApprovalTab(project, state);
                 break;
             case 'construction':
-                html += this.renderConstructionTab(project);
+                html += this.renderConstructionTab(project, state);
                 break;
-            case 'cost':
-                html += this.renderCostTab(project);
+            case 'presale':
+                html += this.renderPresaleTab(project, state);
                 break;
-            case 'procurement':
-                html += this.renderProcurementTab(project);
+            case 'marketing':
+                html += this.renderMarketingTab(project, state);
                 break;
-            case 'planning':
-                html += this.renderPlanningTab(project);
+            case 'contracting':
+                html += this.renderContractingTab(project, state);
+                break;
+            case 'delivery':
+                html += this.renderDeliveryTab(project, state);
                 break;
             case 'finance':
-                html += this.renderProjectFinanceTab(project);
+                html += this.renderProjectFinanceTab(project, state);
                 break;
         }
         
@@ -529,12 +532,13 @@ const Pages = {
     // 渲染项目标签页
     renderProjectTabs: function(project, activeTab) {
         const tabs = [
-            { id: 'certificates', label: '四证办理' },
-            { id: 'design', label: '设计管理' },
+            { id: 'preparation', label: '前期筹备' },
+            { id: 'approval', label: '报批报建' },
             { id: 'construction', label: '工程管理' },
-            { id: 'cost', label: '成本控制' },
-            { id: 'procurement', label: '招采管理' },
-            { id: 'planning', label: '单元规划' },
+            { id: 'presale', label: '预售开盘' },
+            { id: 'marketing', label: '营销蓄客' },
+            { id: 'contracting', label: '签约回款' },
+            { id: 'delivery', label: '竣工交付' },
             { id: 'finance', label: '资金管理' }
         ];
         
@@ -649,49 +653,44 @@ const Pages = {
             '</div>';
     },
     
+    // 渲染前期筹备标签页
+    renderPreparationTab: function(project, state) {
+        return ProjectPages.renderPreparationTab(project, state);
+    },
+    
+    // 渲染报批报建标签页
+    renderApprovalTab: function(project, state) {
+        return ProjectPages.renderApprovalTab(project, state);
+    },
+    
     // 渲染工程管理标签页
-    renderConstructionTab: function(project) {
-        return '<div class="section-title" style="margin-top:16px">🏗️ 工程管理</div>' +
-            '<div class="card">' +
-                '<div class="card-title">工程进度</div>' +
-                '<div class="card-subtitle" style="margin-top:8px">暂未开始施工</div>' +
-            '</div>';
+    renderConstructionTab: function(project, state) {
+        return ProjectPages.renderConstructionTab(project, state);
     },
     
-    // 渲染成本控制标签页
-    renderCostTab: function(project) {
-        return '<div class="section-title" style="margin-top:16px">💰 成本控制</div>' +
-            '<div class="card">' +
-                '<div class="card-title">成本预算</div>' +
-                '<div class="card-subtitle" style="margin-top:8px">设计阶段确定后可查看详细成本</div>' +
-            '</div>';
+    // 渲染预售开盘标签页
+    renderPresaleTab: function(project, state) {
+        return ProjectPages.renderPresaleTab(project, state);
     },
     
-    // 渲染招采管理标签页
-    renderProcurementTab: function(project) {
-        return '<div class="section-title" style="margin-top:16px">📦 招采管理</div>' +
-            '<div class="card">' +
-                '<div class="card-title">供应商管理</div>' +
-                '<div class="card-subtitle" style="margin-top:8px">施工阶段可进行招采</div>' +
-            '</div>';
+    // 渲染营销蓄客标签页
+    renderMarketingTab: function(project, state) {
+        return ProjectPages.renderMarketingTab(project, state);
     },
     
-    // 渲染单元规划标签页
-    renderPlanningTab: function(project) {
-        return '<div class="section-title" style="margin-top:16px">🏘️ 单元规划</div>' +
-            '<div class="card">' +
-                '<div class="card-title">户型规划</div>' +
-                '<div class="card-subtitle" style="margin-top:8px">设计阶段完成后可规划户型</div>' +
-            '</div>';
+    // 渲染签约回款标签页
+    renderContractingTab: function(project, state) {
+        return ProjectPages.renderContractingTab(project, state);
+    },
+    
+    // 渲染竣工交付标签页
+    renderDeliveryTab: function(project, state) {
+        return ProjectPages.renderDeliveryTab(project, state);
     },
     
     // 渲染项目资金管理标签页
-    renderProjectFinanceTab: function(project) {
-        return '<div class="section-title" style="margin-top:16px">💳 资金管理</div>' +
-            '<div class="card">' +
-                '<div class="card-title">资金计划</div>' +
-                '<div class="card-subtitle" style="margin-top:8px">根据工程进度安排资金</div>' +
-            '</div>';
+    renderProjectFinanceTab: function(project, state) {
+        return ProjectPages.renderProjectFinanceTab(project, state);
     },
     
     // 渲染营销页面
@@ -702,7 +701,8 @@ const Pages = {
         
         const tabs = [
             { label: '品牌建设' },
-            { label: '营销活动' }
+            { label: '预售开盘' },
+            { label: '营销蓄客' }
         ];
         
         let html = UI.tabs(tabs, activeTab);
@@ -729,12 +729,38 @@ const Pages = {
                     '<div class="card-subtitle">投入资金提升品牌价值</div>' +
                     '<div style="margin-top:10px;color:#f97316;font-weight:600">单次投入: ' + Utils.formatMoney(1000000) + '</div>' +
                 '</div>';
+        } else if (activeTab === 1) {
+            // 预售开盘
+            const activeProject = state.projects.find(function(p) {
+                return p.status === GameTypes.ProjectStatus.PRESALE || p.status === GameTypes.ProjectStatus.CONSTRUCTION;
+            });
+            
+            if (!activeProject) {
+                html += '<div class="section-title">💰 预售开盘</div>' +
+                    '<div class="card">' +
+                        '<div class="card-title">暂无预售项目</div>' +
+                        '<div class="card-subtitle">请先在项目页面选择项目并申请预售许可</div>' +
+                    '</div>';
+            } else {
+                html += '<div class="section-title">💰 预售开盘 - ' + activeProject.name + '</div>';
+                html += this.renderPresaleTab(activeProject, state);
+            }
         } else {
-            html += '<div class="section-title">📣 营销活动</div>' +
-                '<div class="card">' +
-                    '<div class="card-title">暂无活动</div>' +
-                    '<div class="card-subtitle">更多功能开发中...</div>' +
-                '</div>';
+            // 营销蓄客
+            const activeProject = state.projects.find(function(p) {
+                return p.status === GameTypes.ProjectStatus.PRESALE || p.status === GameTypes.ProjectStatus.CONSTRUCTION;
+            });
+            
+            if (!activeProject) {
+                html += '<div class="section-title">📣 营销蓄客</div>' +
+                    '<div class="card">' +
+                        '<div class="card-title">暂无营销项目</div>' +
+                        '<div class="card-subtitle">请先在项目页面选择项目</div>' +
+                    '</div>';
+            } else {
+                html += '<div class="section-title">📣 营销蓄客 - ' + activeProject.name + '</div>';
+                html += this.renderMarketingTab(activeProject, state);
+            }
         }
         
         return html;

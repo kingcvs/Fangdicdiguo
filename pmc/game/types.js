@@ -168,5 +168,111 @@ const GameTypes = {
         INTEREST_ONLY: 'interest_only',
         EXTENSION: 'extension',
         OVERDUE: 'overdue'
+    },
+    
+    // 项目详细状态
+    ProjectStatus: {
+        PREPARATION: 'preparation',
+        PRE_CONSTRUCTION: 'pre_construction',
+        CONSTRUCTION: 'construction',
+        PRESALE: 'presale',
+        DELIVERY: 'delivery',
+        COMPLETED: 'completed'
+    },
+    
+    // 产品定位
+    ProductPositioning: {
+        AFFORDABLE: 'affordable',
+        IMPROVEMENT: 'improvement',
+        LUXURY: 'luxury',
+        COMMERCIAL: 'commercial',
+        MIXED: 'mixed'
+    },
+    
+    // 设计方案
+    DesignScheme: {
+        STANDARD: 'standard',
+        CUSTOM: 'custom',
+        MASTER: 'master'
+    },
+    
+    // 报批报建阶段
+    ApprovalStage: {
+        LAND_PLANNING: 'land_planning',
+        DESIGN_REVIEW: 'design_review',
+        CONSTRUCTION_PLANNING: 'construction_planning',
+        CONSTRUCTION_PERMIT: 'construction_permit'
+    },
+    
+    // 总包类型
+    ContractorType: {
+        CENTRAL_ENTERPRISE: 'central_enterprise',
+        LOCAL_LEADER: 'local_leader',
+        GENERAL: 'general',
+        LOW_COST: 'low_cost'
+    },
+    
+    // 施工阶段
+    ConstructionPhase: {
+        FOUNDATION: 'foundation',
+        STRUCTURE: 'structure',
+        SECONDARY_STRUCTURE: 'secondary_structure',
+        MECHANICAL_ELECTRICAL: 'mechanical_electrical',
+        LANDSCAPE: 'landscape'
+    },
+    
+    // 开盘方式
+    LaunchMethod: {
+        OFFLINE: 'offline',
+        ONLINE: 'online',
+        NORMAL: 'normal'
+    },
+    
+    // 定价档位
+    PricingTier: {
+        LOW_VOLUME: 'low_volume',
+        BELOW_AVERAGE: 'below_average',
+        RECOMMENDED: 'recommended',
+        ABOVE_AVERAGE: 'above_average',
+        PREMIUM: 'premium'
+    },
+    
+    // 验收策略
+    InspectionStrategy: {
+        THOROUGH: 'thorough',
+        SPOT_CHECK: 'spot_check',
+        FAST: 'fast'
+    },
+    
+    // 交付满意度
+    DeliverySatisfaction: {
+        EXCELLENT: 'excellent',
+        GOOD: 'good',
+        AVERAGE: 'average',
+        POOR: 'poor'
+    },
+    
+    // 蓄客渠道
+    CustomerChannel: {
+        NATURAL: 'natural',
+        ONLINE: 'online',
+        CHANNEL: 'channel',
+        REFERRAL: 'referral',
+        CIRCLE: 'circle'
+    },
+    
+    // 客户等级
+    CustomerLevel: {
+        A: 'A',
+        B: 'B',
+        C: 'C'
+    },
+    
+    // 签约环节
+    ContractStage: {
+        SUBSCRIPTION: 'subscription',
+        ONLINE_SIGN: 'online_sign',
+        MORTGAGE_APPLICATION: 'mortgage_application',
+        LOAN_DISBURSEMENT: 'loan_disbursement'
     }
 };
