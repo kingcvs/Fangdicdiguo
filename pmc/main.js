@@ -13,6 +13,9 @@
         // 初始化游戏状态
         GameState.init();
         
+        // 初始化UI组件
+        UI.init();
+        
         // 初始化菜单系统
         MenuSystem.init();
         
