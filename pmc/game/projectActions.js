@@ -726,5 +726,129 @@ const ProjectActions = {
         
         UI.showToast('项目已清盘结算');
         GameState.notify();
+    },
+    
+    // 设置营销预算
+    setMarketingBudget: function(projectId, ratio) {
+        const state = GameState.get();
+        const project = state.projects.find(function(p) { return p.id === projectId; });
+        
+        if (!project) return;
+        
+        const totalValue = project.totalValue || (project.constructionArea * 15000); // 假设单价15000
+        const budget = totalValue * ratio;
+        
+        GameState.update(function(state) {
+            const p = state.projects.find(function(proj) { return proj.id === projectId; });
+            if (p) {
+                p.marketingBudgetRatio = ratio;
+                p.marketingBudget = budget;
+                p.monthlyMarketingSpend = budget / 12; // 假设12个月营销周期
+            }
+        });
+        
+        UI.showToast('已设置营销预算：' + Utils.formatMoney(budget) + ' (占货值' + (ratio * 100) + '%)');
+        GameState.notify();
+    },
+    
+    // 调整定价
+    adjustPricing: function(projectId, newPrice) {
+        GameState.update(function(state) {
+            const p = state.projects.find(function(proj) { return proj.id === projectId; });
+            if (p) {
+                const oldPrice = p.sellingPrice;
+                p.sellingPrice = newPrice;
+                p.lastPriceChange = new Date();
+                
+                // 检查是否降价
+                if (newPrice < oldPrice) {
+                    p.priceReductionPending = true;
+                    p.priceReductionDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30天后生效
+                    UI.showToast('降价已申请，30天后生效');
+                } else {
+                    // 涨价，去化速度-10%
+                    p.absorptionRate = (p.absorptionRate || 8) * 0.9;
+                    UI.showToast('已上调价格，去化速度-10%');
+                }
+            }
+        });
+        GameState.notify();
+    },
+    
+    // 开盘
+    launchProject: function(projectId) {
+        const state = GameState.get();
+        const project = state.projects.find(function(p) { return p.id === projectId; });
+        
+        if (!project) return;
+        
+        GameState.update(function(state) {
+            const p = state.projects.find(function(proj) { return proj.id === projectId; });
+            if (p) {
+                p.status = GameTypes.ProjectStatus.PRESALE;
+                p.launchDate = new Date();
+                p.totalUnits = p.totalUnits || Math.floor(p.constructionArea / 100); // 假设每套100㎡
+                p.soldUnits = 0;
+                p.customerPool = 0;
+            }
+        });
+        
+        UI.showToast('项目已开盘！');
+        GameState.notify();
+    },
+    
+    // 处理质量事故
+    handleQualityIncident: function(projectId, incidentType, action) {
+        const incidentTypes = {
+            foundation: { name: '基础质量问题', baseCost: 500000, baseTime: 2 },
+            structure: { name: '主体结构问题', baseCost: 1000000, baseTime: 3 },
+            facade: { name: '外立面问题', baseCost: 300000, baseTime: 1 },
+            electrical: { name: '机电问题', baseCost: 500000, baseTime: 2 },
+            other: { name: '其他质量问题', baseCost: 200000, baseTime: 1 }
+        };
+        
+        const incident = incidentTypes[incidentType] || incidentTypes.other;
+        
+        const actions = {
+            full_rework: { name: '全面返工', timeMultiplier: 2, costMultiplier: 0.08, brandEffect: 0 },
+            partial_repair: { name: '局部修复', timeMultiplier: 1, costMultiplier: 0.03, brandEffect: -5, complaintBonus: 15 },
+            cover_up: { name: '瞒报处理', timeMultiplier: 0.5, costMultiplier: 0.01, brandEffect: -15, exposureChance: 0.3 }
+        };
+        
+        const actionConfig = actions[action];
+        const state = GameState.get();
+        const project = state.projects.find(function(p) { return p.id === projectId; });
+        
+        if (!project) return;
+        
+        const cost = incident.baseCost + (actionConfig.costMultiplier * project.totalConstructionCost);
+        
+        GameState.update(function(state) {
+            const p = state.projects.find(function(proj) { return proj.id === projectId; });
+            if (p) {
+                p.constructionDelay = (p.constructionDelay || 0) + incident.baseTime * actionConfig.timeMultiplier;
+                p.qualityIncidents = (p.qualityIncidents || 0) + 1;
+                p.lastIncidentType = incidentType;
+                
+                if (actionConfig.brandEffect) {
+                    state.company.brandValue += actionConfig.brandEffect;
+                }
+                if (actionConfig.complaintBonus) {
+                    p.complaintRate = (p.complaintRate || 0) + actionConfig.complaintBonus;
+                }
+                
+                // 瞒报处理的风险
+                if (action === 'cover_up' && Math.random() < actionConfig.exposureChance) {
+                    state.company.brandValue -= 30;
+                    state.company.publicOpinion = (state.company.publicOpinion || 0) + 30;
+                    p.constructionDelay += 1;
+                    UI.showToast('质量问题被曝光！舆论+30');
+                }
+            }
+            state.company.cash -= cost;
+        });
+        
+        UI.showToast('已处理' + incident.name + '：' + actionConfig.name);
+        GameState.notify();
     }
 };
