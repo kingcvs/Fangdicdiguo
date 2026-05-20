@@ -32,9 +32,22 @@ body {
     min-height: 100vh;
     overflow-x: hidden;
     -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation;
+}
+
+/* 防止双击缩放 */
+button,
+.btn,
+.nav-item,
+.card {
+    touch-action: manipulation;
+    -ms-touch-action: manipulation;
 }
 
 /* ==================== Main Menu Styles ==================== */

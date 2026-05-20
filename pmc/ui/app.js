@@ -69,8 +69,15 @@ const App = {
         this.elements.bottomNav.onclick = function(e) {
             const navItem = e.target.closest('.nav-item');
             if (navItem) {
-                const page = navItem.dataset.page;
-                Pages.currentPage = page;
+                const newPage = navItem.dataset.page;
+                const oldPage = Pages.currentPage;
+                
+                // 如果从项目页面离开，重置项目页面状态为列表视图
+                if (oldPage === 'project' && newPage !== 'project') {
+                    Pages.tabStates.project = { list: true, activeProject: null, activeTab: 'preparation' };
+                }
+                
+                Pages.currentPage = newPage;
                 self.render();
             }
         };

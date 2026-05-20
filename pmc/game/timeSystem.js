@@ -9,6 +9,8 @@ const TimeSystem = {
     
     // 初始化
     init: function() {
+        // 先停止可能存在的旧循环
+        this.stopLoop();
         this.lastUpdate = Date.now();
         this.startLoop();
     },

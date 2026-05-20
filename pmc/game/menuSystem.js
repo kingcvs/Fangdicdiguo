@@ -1,9 +1,20 @@
 // 菜单系统
 const MenuSystem = {
-    VERSION: 'v1.0',
+    VERSION: 'v1.1',
     
     // 更新日志
     CHANGELOG: [
+        {
+            version: 'v1.1',
+            date: '2026-05-21',
+            changes: [
+                '🔧 修复项目页面切换后卡住不动的问题',
+                '💾 修复存档管理读取存档无响应的问题',
+                '▶️ 修复继续游戏无法正常进入的问题',
+                '📱 修复按钮点击和页面自动缩放的问题',
+                '📝 完善更新日志显示功能'
+            ]
+        },
         {
             version: 'v1.0',
             date: '2026-05-20',
@@ -744,6 +755,10 @@ const MenuSystem = {
             mainMenu.style.display = 'none';
         }
         
+        // 重置页面状态
+        Pages.currentPage = 'overview';
+        Pages.tabStates = {};
+        
         // 重新构建游戏界面结构
         const gameApp = document.getElementById('app');
         if (gameApp) {
@@ -811,10 +826,9 @@ const MenuSystem = {
         // 初始化游戏
         UI.init();
         App.init();
-        if (!window.gameInitialized) {
-            TimeSystem.init();
-            window.gameInitialized = true;
-        }
+        // 确保时间系统初始化（即使是再次进入游戏也重置）
+        TimeSystem.init();
+        window.gameInitialized = true;
         
         // 自动存档
         this.autoSave();

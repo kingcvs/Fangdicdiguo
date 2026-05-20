@@ -330,7 +330,8 @@ const Pages = {
     // 渲染项目页面
     project: function() {
         const state = GameState.get();
-        this.tabStates.project = this.tabStates.project || { list: true, activeProject: null, activeTab: 'certificates' };
+        // 修复默认标签页为 preparation，与 renderProjectTabs 匹配
+        this.tabStates.project = this.tabStates.project || { list: true, activeProject: null, activeTab: 'preparation' };
         const ts = this.tabStates.project;
         
         // 如果没有活动项目，显示项目列表
@@ -360,13 +361,13 @@ const Pages = {
     
     // 打开演示项目
     openProjectDemo: function() {
-        this.tabStates.project = { list: false, activeProject: 'demo', activeTab: 'certificates' };
+        this.tabStates.project = { list: false, activeProject: 'demo', activeTab: 'preparation' };
         GameState.notify();
     },
     
     // 打开项目详情
     openProjectDetail: function(projectId) {
-        this.tabStates.project = { list: false, activeProject: projectId, activeTab: 'certificates' };
+        this.tabStates.project = { list: false, activeProject: projectId, activeTab: 'preparation' };
         GameState.notify();
     },
     
@@ -439,6 +440,10 @@ const Pages = {
                 break;
             case 'finance':
                 html += this.renderProjectFinanceTab(project, state);
+                break;
+            default:
+                // 默认显示前期筹备
+                html += this.renderPreparationTab(project, state);
                 break;
         }
         
