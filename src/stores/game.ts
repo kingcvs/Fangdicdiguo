@@ -4,11 +4,24 @@ import type { GameState, Company, Player, Land, Project } from '@/types/game'
 
 // 从原始localStorage key读取数据
 const OLD_SAVE_KEY = 'real-estate-save'
+const SAVE_KEY_PREFIX = 'real-estate-save-'
+const AUTO_SAVE_KEY = 'real-estate-save-auto'
+
+export interface SaveSlot {
+  id: string
+  name: string
+  timestamp: Date
+  gameTime: { year: number; month: number }
+  companyName: string
+  cash: number
+  totalAssets: number
+}
 
 export const useGameStore = defineStore('game', () => {
   const gameState = ref<GameState | null>(null)
   const isLoading = ref(false)
   const hasOldSave = ref(false)
+  const saveSlots = ref<SaveSlot[]>([])
   
   // Getters
   const isInGame = computed(() => gameState.value?.isInGame ?? false)
@@ -294,11 +307,119 @@ export const useGameStore = defineStore('game', () => {
   function exitGame() {
     gameState.value = null
   }
+
+  // 获取所有存档
+  function getAllSaves() {
+    const slots: SaveSlot[] = []
+    try {
+      // 获取自动存档
+      const autoSave = localStorage.getItem(AUTO_SAVE_KEY)
+      if (autoSave) {
+        const parsed = JSON.parse(autoSave)
+        slots.push({
+          id: 'auto',
+          name: '自动存档',
+          timestamp: new Date(parsed.timestamp),
+          gameTime: parsed.gameTime,
+          companyName: parsed.companyName,
+          cash: parsed.cash,
+          totalAssets: parsed.totalAssets
+        })
+      }
+      
+      // 获取手动存档槽1-5
+      for (let i = 1; i <= 5; i++) {
+        const saveData = localStorage.getItem(`${SAVE_KEY_PREFIX}${i}`)
+        if (saveData) {
+          const parsed = JSON.parse(saveData)
+          slots.push({
+            id: `slot-${i}`,
+            name: `存档 ${i}`,
+            timestamp: new Date(parsed.timestamp),
+            gameTime: parsed.gameTime,
+            companyName: parsed.companyName,
+            cash: parsed.cash,
+            totalAssets: parsed.totalAssets
+          })
+        }
+      }
+      
+      slots.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      saveSlots.value = slots
+    } catch (e) {
+      console.error('Failed to get saves:', e)
+    }
+  }
+
+  // 保存游戏
+  function saveGame(slotId: string = 'auto', slotName?: string) {
+    if (!gameState.value) return false
+    
+    try {
+      const saveData = {
+        version: '3.0.0',
+        timestamp: new Date().toISOString(),
+        gameTime: gameState.value.gameTime,
+        gameState: gameState.value,
+        companyName: gameState.value.company.name,
+        cash: gameState.value.company.cash,
+        totalAssets: gameState.value.company.totalAssets
+      }
+      
+      const key = slotId === 'auto' ? AUTO_SAVE_KEY : `${SAVE_KEY_PREFIX}${slotId.split('-')[1]}`
+      localStorage.setItem(key, JSON.stringify(saveData))
+      
+      // 更新存档列表
+      getAllSaves()
+      return true
+    } catch (e) {
+      console.error('Failed to save game:', e)
+      return false
+    }
+  }
+
+  // 加载存档
+  function loadSaveGame(slotId: string) {
+    try {
+      const key = slotId === 'auto' ? AUTO_SAVE_KEY : `${SAVE_KEY_PREFIX}${slotId.split('-')[1]}`
+      const saveData = localStorage.getItem(key)
+      
+      if (saveData) {
+        const parsed = JSON.parse(saveData)
+        gameState.value = parsed.gameState
+        return true
+      }
+    } catch (e) {
+      console.error('Failed to load save:', e)
+    }
+    return false
+  }
+
+  // 删除存档
+  function deleteSave(slotId: string) {
+    try {
+      const key = slotId === 'auto' ? AUTO_SAVE_KEY : `${SAVE_KEY_PREFIX}${slotId.split('-')[1]}`
+      localStorage.removeItem(key)
+      getAllSaves()
+      return true
+    } catch (e) {
+      console.error('Failed to delete save:', e)
+      return false
+    }
+  }
+
+  // 自动保存
+  function autoSave() {
+    if (gameState.value && gameState.value.isInGame) {
+      saveGame('auto', '自动存档')
+    }
+  }
   
   return { 
     gameState, 
     isLoading, 
     hasOldSave,
+    saveSlots,
     isInGame,
     company,
     cash,
@@ -309,6 +430,11 @@ export const useGameStore = defineStore('game', () => {
     loadSave, 
     updateState,
     exitGame,
-    checkOldSave
+    checkOldSave,
+    getAllSaves,
+    saveGame,
+    loadSaveGame,
+    deleteSave,
+    autoSave
   }
 })

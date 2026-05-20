@@ -61,8 +61,16 @@
           <div class="section-title">💰 财务状况</div>
           <div class="grid grid-cols-2 gap-3 mb-4">
             <div class="card">
-              <div class="text-white/50 text-xs">负债率</div>
-              <div class="text-xl font-bold text-green-400">{{ debtRatio }}%</div>
+              <div class="text-white/50 text-xs">现金</div>
+              <div class="text-xl font-bold text-amber-400">{{ formatMoney(cash) }}</div>
+            </div>
+            <div class="card">
+              <div class="text-white/50 text-xs">总资产</div>
+              <div class="text-xl font-bold text-green-400">{{ formatMoney(totalAssets) }}</div>
+            </div>
+            <div class="card">
+              <div class="text-white/50 text-xs">总负债</div>
+              <div class="text-xl font-bold text-red-400">{{ formatMoney(company?.totalLiabilities || 0) }}</div>
             </div>
             <div class="card">
               <div class="text-white/50 text-xs">月利润</div>
@@ -70,6 +78,20 @@
                 {{ formatMoney(company?.monthlyProfit || 0) }}
               </div>
             </div>
+          </div>
+
+          <div class="card mb-4">
+            <div class="text-white/50 text-xs mb-2">负债率</div>
+            <div class="text-xl font-bold mb-2" :class="parseFloat(debtRatio) > 70 ? 'text-red-400' : 'text-green-400'">
+              {{ debtRatio }}%
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ 
+                width: Math.min(100, parseFloat(debtRatio)) + '%',
+                background: parseFloat(debtRatio) > 70 ? 'linear-gradient(90deg, #ef4444, #dc2626)' : 'linear-gradient(90deg, #22c55e, #4ade80)'
+              }"></div>
+            </div>
+            <div class="text-white/50 text-xs mt-2 text-right">安全线: 70%</div>
           </div>
 
           <div class="section-title">📊 项目概览</div>
@@ -104,6 +126,29 @@
             </div>
             <div class="progress-bar">
               <div class="progress-fill" :style="{ width: Math.min(100, (company?.brand?.score || 0) / 2) + '%' }"></div>
+            </div>
+            <div class="text-white/50 text-xs mt-2 text-right">{{ brandLevelText }}</div>
+          </div>
+
+          <div class="section-title">📈 宏观经济</div>
+          <div class="card mb-4">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="text-white/50 text-xs">GDP增速</div>
+                <div class="font-semibold">{{ macroEconomy.gdpGrowthRate }}%</div>
+              </div>
+              <div>
+                <div class="text-white/50 text-xs">利率</div>
+                <div class="font-semibold">{{ macroEconomy.interestRate }}%</div>
+              </div>
+              <div>
+                <div class="text-white/50 text-xs">房价指数</div>
+                <div class="font-semibold">{{ macroEconomy.housingPriceIndex.toFixed(1) }}</div>
+              </div>
+              <div>
+                <div class="text-white/50 text-xs">城镇化率</div>
+                <div class="font-semibold">{{ macroEconomy.urbanizationRate }}%</div>
+              </div>
             </div>
           </div>
         </div>
