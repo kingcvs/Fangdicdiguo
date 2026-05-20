@@ -87,7 +87,7 @@ const GameState = {
     // 检查成就
     checkAchievements: function() {
         const state = this.state;
-        
+
         // 检查资产
         if (state.company.totalAssets >= 100000000) {
             this.unlockAchievement('ach_millionaire');
@@ -95,12 +95,18 @@ const GameState = {
         if (state.company.totalAssets >= 1000000000) {
             this.unlockAchievement('ach_billionaire');
         }
-        
+        if (state.company.totalAssets >= 100000000000) {
+            this.unlockAchievement('ach_trillionaire');
+        }
+
         // 检查品牌价值
         if (state.company.brandValue >= 100) {
             this.unlockAchievement('ach_brand_100');
         }
-        
+        if (state.company.brandValue >= 200) {
+            this.unlockAchievement('ach_brand_200');
+        }
+
         // 检查项目数量
         const activeProjects = state.projects.filter(function(p) {
             return p.status !== GameTypes.ProjectStatus.COMPLETED;
@@ -109,12 +115,41 @@ const GameState = {
             this.unlockAchievement('ach_5_projects');
         }
         
+        const completedProjects = state.projects.filter(function(p) {
+            return p.status === GameTypes.ProjectStatus.COMPLETED;
+        });
+        if (completedProjects.length >= 10) {
+            this.unlockAchievement('ach_10_projects');
+        }
+
         // 检查员工数量
         const activeEmployees = state.employees.filter(function(e) {
             return e.status !== GameTypes.EmployeeStatus.FIRED;
         });
         if (activeEmployees.length >= 10) {
             this.unlockAchievement('ach_employee_10');
+        }
+        if (activeEmployees.length >= 20) {
+            this.unlockAchievement('ach_employee_20');
+        }
+        
+        // 检查资质等级
+        if (state.company.qualificationLevel <= 3) {
+            this.unlockAchievement('ach_qualification_3');
+        }
+        if (state.company.qualificationLevel <= 2) {
+            this.unlockAchievement('ach_qualification_2');
+        }
+        if (state.company.qualificationLevel <= 1) {
+            this.unlockAchievement('ach_qualification_1');
+        }
+        
+        // 检查土地数量
+        const ownedLand = state.land.filter(function(l) {
+            return l.status === GameTypes.LandStatus.OWNED || l.status === GameTypes.LandStatus.DEVELOPED;
+        });
+        if (ownedLand.length >= 10) {
+            this.unlockAchievement('ach_land_10');
         }
     }
 };

@@ -278,34 +278,27 @@ const TimeSystem = {
     
     // 处理证书办理
     processCertification: function(project, speedBonus) {
-        // 找到当前办理中的证书
-        const certTypes = [
-            GameTypes.CertificateTypes.LAND,
-            GameTypes.CertificateTypes.PLANNING,
-            GameTypes.CertificateTypes.CONSTRUCTION,
-            GameTypes.CertificateTypes.PRESALE
-        ];
+        // 先解锁下一个证书（如果上一个已完成）
+        this.unlockNextCertificate(project);
         
-        for (let i = 0; i < certTypes.length; i++) {
-            const cert = project.certificates.find(function(c) {
-                return c.type === certTypes[i];
-            });
+        // 处理正在办理的证书
+        for (let i = 0; i < project.certificates.length; i++) {
+            const cert = project.certificates[i];
             
-            if (!cert) continue;
-            
-            if (cert.status === GameTypes.CertificateStatus.PENDING) {
-                // 开始办理下一个证书
-                cert.status = GameTypes.CertificateStatus.PROCESSING;
-                cert.progress = 0;
-                break;
-            } else if (cert.status === GameTypes.CertificateStatus.PROCESSING) {
-                // 继续办理
-                const speed = 20 + speedBonus * 5;
+            if (cert.status === GameTypes.CertificateStatus.PROCESSING) {
+                // 计算进度
+                const baseSpeed = 100 / (cert.duration || 30);
+                const speed = baseSpeed * (1 + speedBonus * 0.1);
                 cert.progress = Math.min(100, cert.progress + speed);
                 
                 if (cert.progress >= 100) {
                     cert.status = GameTypes.CertificateStatus.COMPLETED;
                     cert.obtainedDate = new Date(GameState.get().date);
+                    
+                    UI.showToast('📜 获得证书：' + cert.name);
+                    
+                    // 解锁下一个证书
+                    this.unlockNextCertificate(project);
                     
                     // 检查是否所有证书都完成
                     const allComplete = project.certificates.every(function(c) {
@@ -313,10 +306,16 @@ const TimeSystem = {
                     });
                     
                     if (allComplete) {
-                        project.status = GameTypes.ProjectStatus.CONSTRUCTION;
-                        UI.showToast('🏗️ ' + project.name + ' 开始施工！');
-                    } else {
-                        UI.showToast('📜 获得证书：' + Utils.getCertificateTypeText(cert.type));
+                        project.status = GameTypes.ProjectStatus.PLANNING;
+                        project.stages[0].completed = true;
+                        project.stages[0].active = false;
+                        project.stages[1].active = true;
+                        UI.showToast('🏗️ ' + project.name + ' 四证完成，进入设计阶段！');
+                        
+                        // 自动模式下自动开始设计
+                        if (project.autoMode) {
+                            GameActions.startDesign(project.id);
+                        }
                     }
                 }
                 break;
@@ -324,22 +323,74 @@ const TimeSystem = {
         }
     },
     
+    // 解锁下一个证书
+    unlockNextCertificate: function(project) {
+        for (let i = 0; i < project.certificates.length; i++) {
+            const cert = project.certificates[i];
+            
+            if (cert.status === GameTypes.CertificateStatus.COMPLETED) {
+                // 解锁下一个证书
+                if (i + 1 < project.certificates.length) {
+                    project.certificates[i + 1].unlocked = true;
+                }
+            }
+        }
+    },
+    
     // 处理工程建设
     processConstruction: function(project, speedBonus, qualityBonus, costBonus) {
+        if (!project.construction) {
+            project.construction = {
+                phase: '未开始',
+                progress: 0,
+                quality: 50,
+                phases: [
+                    { name: '地基施工', progress: 0, completed: false },
+                    { name: '主体结构', progress: 0, completed: false },
+                    { name: '内外装修', progress: 0, completed: false },
+                    { name: '设备安装', progress: 0, completed: false },
+                    { name: '竣工验收', progress: 0, completed: false }
+                ],
+                currentPhase: 0
+            };
+        }
+        
+        if (project.construction.phase !== '进行中') {
+            return;
+        }
+        
+        const state = GameState.get();
+        const currentPhase = project.construction.currentPhase;
+        const phase = project.construction.phases[currentPhase];
+        
         // 计算进度
-        const baseSpeed = 8;
-        const speed = baseSpeed + speedBonus;
-        project.progress = Math.min(100, project.progress + speed);
+        const baseSpeed = 20;
+        const speed = baseSpeed + speedBonus * 3;
+        phase.progress = Math.min(100, phase.progress + speed);
+        
+        // 更新整体进度
+        let totalProgress = 0;
+        const phaseWeight = 100 / project.construction.phases.length;
+        for (let i = 0; i < project.construction.phases.length; i++) {
+            const p = project.construction.phases[i];
+            if (p.completed) {
+                totalProgress += phaseWeight;
+            } else if (i === currentPhase) {
+                totalProgress += phaseWeight * (p.progress / 100);
+            }
+        }
+        project.construction.progress = totalProgress;
+        project.progress = totalProgress;
         
         // 计算成本（考虑成本加成）
-        const monthlyCost = project.constructionCost / 12; // 假设12个月工期
+        const phaseCost = project.constructionCost / project.construction.phases.length;
+        const monthlyCost = phaseCost / 3; // 假设每个阶段3个月
         const costModifier = 1 + costBonus / 100;
         const actualCost = monthlyCost * costModifier;
         
         // 支付工程费用
-        const state = GameState.get();
         state.company.cash -= actualCost;
-        project.spentCost = (project.spentCost || 0) + actualCost;
+        project.cost.actualCost = (project.cost.actualCost || 0) + actualCost;
         
         GameState.addTransaction(
             GameTypes.TransactionType.EXPENSE,
@@ -349,21 +400,36 @@ const TimeSystem = {
         );
         
         // 质量影响售价
-        project.quality = (project.quality || 50) + qualityBonus * 0.5;
-        project.quality = Math.min(100, project.quality);
+        project.construction.quality = (project.construction.quality || 50) + qualityBonus * 0.3;
+        project.construction.quality = Math.min(100, Math.max(0, project.construction.quality));
+        project.quality = project.construction.quality;
         
-        // 检查完工
-        if (project.progress >= 100) {
-            project.status = GameTypes.ProjectStatus.PRESALE;
-            UI.showToast('🏢 ' + project.name + ' 主体完工，开始预售！');
+        // 检查当前阶段是否完成
+        if (phase.progress >= 100 && !phase.completed) {
+            phase.completed = true;
             
-            // 检查完成第一个项目的成就
-            const completedCount = state.projects.filter(function(p) {
-                return p.status === GameTypes.ProjectStatus.COMPLETED || 
-                       p.status === GameTypes.ProjectStatus.PRESALE;
-            }).length;
-            if (completedCount === 1) {
-                GameState.unlockAchievement('ach_first_complete');
+            if (currentPhase < project.construction.phases.length - 1) {
+                project.construction.currentPhase++;
+                UI.showToast('✅ ' + project.name + ' 完成 ' + phase.name + '！');
+            } else {
+                // 全部完成
+                project.construction.phase = '已完成';
+                project.construction.completeDate = new Date(state.date);
+                project.stages[2].completed = true;
+                project.stages[2].active = false;
+                project.stages[3].active = true;
+                project.status = GameTypes.ProjectStatus.PRESALE;
+                
+                UI.showToast('🏢 ' + project.name + ' 施工完成，开始预售！');
+                
+                // 检查完成第一个项目的成就
+                const completedCount = state.projects.filter(function(p) {
+                    return p.status === GameTypes.ProjectStatus.COMPLETED || 
+                           p.status === GameTypes.ProjectStatus.PRESALE;
+                }).length;
+                if (completedCount === 1) {
+                    GameState.unlockAchievement('ach_first_complete');
+                }
             }
         }
     },

@@ -71,7 +71,11 @@ const InitialData = {
                 '市场需求旺盛，房产销售火爆',
                 '银行降息，融资成本降低',
                 '央行降准释放流动性，市场资金面宽松',
-                '住房公积金贷款政策调整，购房成本下降'
+                '住房公积金贷款政策调整，购房成本下降',
+                '知名开发商入驻{city}，带动区域发展',
+                '重大利好！新政策出台，购房需求激增',
+                '建材价格下降，开发成本降低',
+                '政府出台税收优惠，利润空间扩大'
             ]},
             { type: 'bad', title: '利空消息', templates: [
                 '调控收紧，{city}限购政策升级',
@@ -79,7 +83,11 @@ const InitialData = {
                 '建材价格上涨，开发成本增加',
                 '银行加息，融资压力增大',
                 '土地拍卖溢价率过高，拿地成本激增',
-                '房贷利率上调，购房需求受抑制'
+                '房贷利率上调，购房需求受抑制',
+                '突发恶劣天气，项目工期延误',
+                '重大质量问题，需要返工，成本增加',
+                '竞品降价促销，市场竞争加剧',
+                '原材料供应紧张，施工进度受影响'
             ]},
             { type: 'competitor', title: '竞争对手动态', templates: [
                 '{comp}高价拿地，彰显资金实力',
@@ -87,20 +95,35 @@ const InitialData = {
                 '{comp}陷入资金链紧张传闻',
                 '{comp}宣布多元化转型，布局新业务',
                 '{comp}与知名企业签署战略合作协议',
-                '{comp}获得大额银行授信'
+                '{comp}获得大额银行授信',
+                '{comp}推出创新营销活动，吸引大量客户',
+                '{comp}被收购本地小开发商，扩大市场份额',
+                '{comp}陷入质量门事件，品牌受损',
+                '{comp}获得知名设计师加盟，设计能力大增'
             ]},
             { type: 'player', title: '公司动态', templates: [
                 '公司{action}，品牌影响力提升',
                 '团队士气高涨，效率显著提升',
                 '公司荣获「年度最佳雇主」称号',
                 '公司入选行业百强榜单',
-                '公司新项目案名正式发布'
+                '公司新项目案名正式发布',
+                '公司获得银行大额授信，资金充裕',
+                '公司招聘到顶尖人才加入，能力提升',
+                '公司获得行业奖项，知名度大幅提升',
+                '公司与知名企业合作，强强联合',
+                '公司公益活动，社会美誉度提升'
             ]},
             { type: 'project', title: '项目动态', templates: [
                 '{proj}项目进展顺利，提前{days}天完成节点',
                 '{proj}获得市场高度认可',
                 '{proj}荣获「最佳人居环境奖」',
-                '{proj}样板间开放，客户来访超千人'
+                '{proj}样板间开放，客户来访超千人',
+                '{proj}提前封顶，工程进度喜人',
+                '{proj}获得设计大奖，品质获认可',
+                '{proj}媒体报道，知名度大增',
+                '{proj}热销，开盘即售罄',
+                '{proj}业主好评如潮，口碑爆棚',
+                '{proj}提前交房，业主满意'
             ]}
         ];
         
@@ -325,10 +348,46 @@ const InitialData = {
                 finance: { active: false }
             },
             certificates: [
-                { name: '国有土地使用证', status: 'pending', unlocked: true },
-                { name: '建设用地规划许可证', status: 'locked', unlocked: false },
-                { name: '建设工程规划许可证', status: 'locked', unlocked: false },
-                { name: '建筑工程施工许可证', status: 'locked', unlocked: false }
+                { 
+                    type: GameTypes.CertificateTypes.LAND,
+                    typeName: '国有土地使用证', 
+                    name: '国有土地使用证', 
+                    status: GameTypes.CertificateStatus.PENDING, 
+                    unlocked: true,
+                    progress: 0,
+                    duration: 30, // 天数
+                    cost: 500000
+                },
+                { 
+                    type: GameTypes.CertificateTypes.PLANNING,
+                    typeName: '建设用地规划许可证', 
+                    name: '建设用地规划许可证', 
+                    status: GameTypes.CertificateStatus.PENDING, 
+                    unlocked: false,
+                    progress: 0,
+                    duration: 25,
+                    cost: 300000
+                },
+                { 
+                    type: GameTypes.CertificateTypes.CONSTRUCTION,
+                    typeName: '建设工程规划许可证', 
+                    name: '建设工程规划许可证', 
+                    status: GameTypes.CertificateStatus.PENDING, 
+                    unlocked: false,
+                    progress: 0,
+                    duration: 40,
+                    cost: 800000
+                },
+                { 
+                    type: GameTypes.CertificateTypes.PRESALE,
+                    typeName: '建筑工程施工许可证', 
+                    name: '建筑工程施工许可证', 
+                    status: GameTypes.CertificateStatus.PENDING, 
+                    unlocked: false,
+                    progress: 0,
+                    duration: 35,
+                    cost: 600000
+                }
             ],
             design: {
                 phase: '未开始',
@@ -338,7 +397,46 @@ const InitialData = {
                 priceCoefficient: 1.20,
                 demandCoefficient: 0.85,
                 plotRatio: 2.5,
-                plotRatioLimit: 2.5
+                plotRatioLimit: 2.5,
+                greeningRate: 0.35,
+                buildingDensity: 0.25
+            },
+            construction: {
+                phase: '未开始',
+                progress: 0,
+                quality: 50,
+                phases: [
+                    { name: '地基施工', progress: 0, completed: false },
+                    { name: '主体结构', progress: 0, completed: false },
+                    { name: '内外装修', progress: 0, completed: false },
+                    { name: '设备安装', progress: 0, completed: false },
+                    { name: '竣工验收', progress: 0, completed: false }
+                ],
+                currentPhase: 0
+            },
+            cost: {
+                budget: 0,
+                actualCost: 0,
+                costBreakdown: {
+                    land: 0,
+                    construction: 0,
+                    design: 0,
+                    marketing: 0,
+                    other: 0
+                }
+            },
+            procurement: {
+                suppliers: [],
+                materials: []
+            },
+            planning: {
+                units: [],
+                totalUnits: 0,
+                unitTypes: []
+            },
+            finance: {
+                cashFlow: [],
+                budget: []
             }
         };
     },
@@ -566,6 +664,69 @@ const InitialData = {
                 description: '拥有10名员工',
                 unlocked: false,
                 category: GameTypes.AchievementCategory.PERSONAL
+            },
+            {
+                id: 'ach_qualification_3',
+                name: '资质升级',
+                description: '公司资质升级到三级',
+                unlocked: false,
+                category: GameTypes.AchievementCategory.PROJECT
+            },
+            {
+                id: 'ach_qualification_2',
+                name: '行业先锋',
+                description: '公司资质升级到二级',
+                unlocked: false,
+                category: GameTypes.AchievementCategory.PROJECT
+            },
+            {
+                id: 'ach_qualification_1',
+                name: '行业巨头',
+                description: '公司资质升级到一级',
+                unlocked: false,
+                category: GameTypes.AchievementCategory.PROJECT
+            },
+            {
+                id: 'ach_10_projects',
+                name: '全面发展',
+                description: '累计完成10个项目',
+                unlocked: false,
+                category: GameTypes.AchievementCategory.PROJECT
+            },
+            {
+                id: 'ach_employee_20',
+                name: '人才济济',
+                description: '拥有20名员工',
+                unlocked: false,
+                category: GameTypes.AchievementCategory.PERSONAL
+            },
+            {
+                id: 'ach_land_10',
+                name: '土地储备',
+                description: '拥有10块土地',
+                unlocked: false,
+                category: GameTypes.AchievementCategory.PROJECT
+            },
+            {
+                id: 'ach_profit_100m',
+                name: '利润大户',
+                description: '单个项目利润过亿',
+                unlocked: false,
+                category: GameTypes.AchievementCategory.FINANCE
+            },
+            {
+                id: 'ach_brand_200',
+                name: '顶级品牌',
+                description: '品牌价值达到200',
+                unlocked: false,
+                category: GameTypes.AchievementCategory.BRAND
+            },
+            {
+                id: 'ach_trillionaire',
+                name: '商业帝国',
+                description: '公司资产达到100亿',
+                unlocked: false,
+                category: GameTypes.AchievementCategory.FINANCE
             }
         ];
     },

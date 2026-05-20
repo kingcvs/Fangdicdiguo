@@ -556,35 +556,47 @@ const Pages = {
                     '<span style="font-weight:600">公司可用现金</span>' +
                     '<span style="color:#22c55e;font-size:20px;font-weight:700">' + Utils.formatMoney(state.company.cash) + '</span>' +
                 '</div>' +
-                '<div style="color:#94a3b8;font-size:13px">按顺序办理：用地规划→工程规划→施工许可→预售许可</div>' +
+                '<div style="color:#94a3b8;font-size:13px">按顺序办理：国有土地使用证→建设用地规划→建设工程规划→施工许可</div>' +
             '</div>' +
-            project.certificates.map(function(cert) {
+            project.certificates.map(function(cert, index) {
                 let statusClass = 'pending';
                 let statusText = '待办理';
                 let buttonText = '申请办理';
                 let buttonClass = 'btn-primary';
                 let buttonDisabled = !cert.unlocked;
+                let progressBar = '';
                 
-                if (cert.status === 'processing') {
+                if (cert.status === GameTypes.CertificateStatus.PROCESSING) {
                     statusClass = 'processing';
-                    statusText = '办理中';
+                    statusText = '办理中 ' + Math.round(cert.progress || 0) + '%';
                     buttonText = '办理中...';
                     buttonClass = 'btn-secondary';
                     buttonDisabled = true;
-                } else if (cert.status === 'completed') {
+                    progressBar = '<div style="margin-top:8px"><div class="progress-bar"><div class="progress-fill" style="width:' + Math.round(cert.progress || 0) + '%"></div></div></div>';
+                } else if (cert.status === GameTypes.CertificateStatus.COMPLETED) {
                     statusClass = 'completed';
-                    statusText = '已完成';
+                    statusText = '已完成 ✓';
                     buttonText = '已完成';
                     buttonClass = 'btn-secondary';
                     buttonDisabled = true;
+                } else if (!cert.unlocked) {
+                    statusClass = 'locked';
+                    statusText = '未解锁';
+                }
+                
+                let costText = '';
+                if (cert.cost && cert.unlocked && cert.status === GameTypes.CertificateStatus.PENDING) {
+                    costText = '<div style="color:#f97316;font-size:13px;margin-top:8px">费用: ' + Utils.formatMoney(cert.cost) + '</div>';
                 }
                 
                 return '<div class="card cert-card cert-' + statusClass + '">' +
                     '<div style="display:flex;justify-content:space-between;align-items:center">' +
-                        '<span style="font-weight:600">' + cert.name + '</span>' +
+                        '<span style="font-weight:600">' + (index + 1) + '. ' + cert.name + '</span>' +
                         '<span class="cert-status status-' + statusClass + '">' + statusText + '</span>' +
                     '</div>' +
-                    (cert.unlocked ? 
+                    progressBar +
+                    costText +
+                    (cert.unlocked && cert.status === GameTypes.CertificateStatus.PENDING ? 
                         '<div style="margin-top:12px;text-align:right">' +
                             '<button class="btn ' + buttonClass + ' btn-sm" ' + 
                                 (buttonDisabled ? 'disabled' : 'onclick="GameActions.applyCertificate(\'' + project.id + '\', \'' + cert.name + '\')"') +
@@ -600,98 +612,455 @@ const Pages = {
         const design = project.design;
         const positions = ['刚需', '改善', '高端'];
         const facades = ['现代简约', '新中式', 'ArtDeco', '法式'];
+        const canEdit = design.phase !== '已完成';
+        const isStarted = design.phase === '进行中';
+        const isComplete = design.phase === '已完成';
         
-        return '<div class="section-title" style="margin-top:16px">📐 设计总览</div>' +
-            '<div class="card">' +
-                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
-                    '<span style="font-weight:600">当前阶段</span>' +
-                    '<span style="color:#3b82f6">' + design.phase + '</span>' +
-                '</div>' +
-                '<div style="margin-bottom:16px">' +
-                    '<div style="color:#94a3b8;font-size:13px;margin-bottom:8px">项目定位</div>' +
-                    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-                        positions.map(function(pos) {
-                            return '<button class="btn ' + (design.positioning === pos ? 'btn-primary' : 'btn-secondary') + ' btn-sm" ' +
-                                'onclick="GameActions.setPositioning(\'' + project.id + '\', \'' + pos + '\')">' + pos + '</button>';
-                        }).join('') +
-                    '</div>' +
-                '</div>' +
-                '<div style="margin-bottom:16px">' +
-                    '<div style="color:#94a3b8;font-size:13px;margin-bottom:8px">外立面风格</div>' +
-                    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-                        facades.map(function(facade) {
-                            return '<button class="btn ' + (design.facade === facade ? 'btn-primary' : 'btn-secondary') + ' btn-sm" ' +
-                                'onclick="GameActions.setFacade(\'' + project.id + '\', \'' + facade + '\')">' + facade + '</button>';
-                        }).join('') +
-                    '</div>' +
-                '</div>' +
-                '<div style="display:grid;grid-template-columns:1fr;gap:12px">' +
-                    '<div style="display:flex;justify-content:space-between">' +
-                        '<span style="color:#94a3b8">成本系数</span>' +
-                        '<span style="font-weight:600">×' + design.costCoefficient.toFixed(2) + '</span>' +
-                    '</div>' +
-                    '<div style="display:flex;justify-content:space-between">' +
-                        '<span style="color:#94a3b8">售价系数</span>' +
-                        '<span style="font-weight:600">×' + design.priceCoefficient.toFixed(2) + '</span>' +
-                    '</div>' +
-                    '<div style="display:flex;justify-content:space-between">' +
-                        '<span style="color:#94a3b8">需求系数</span>' +
-                        '<span style="font-weight:600">×' + design.demandCoefficient.toFixed(2) + '</span>' +
-                    '</div>' +
-                '</div>' +
-            '</div>' +
-            '<div class="card" style="margin-top:16px">' +
-                '<div class="card-title">📊 规划指标</div>' +
-                '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">' +
-                    '<span style="font-weight:600">容积率</span>' +
-                    '<span style="font-weight:600">' + design.plotRatio.toFixed(2) + ' (上限 ' + design.plotRatioLimit.toFixed(2) + ')</span>' +
+        let html = '<div class="section-title" style="margin-top:16px">📐 设计管理</div>';
+        
+        // 阶段状态
+        html += '<div class="card">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+                '<span style="font-weight:600">当前阶段</span>' +
+                '<span style="color:' + (isComplete ? '#22c55e' : isStarted ? '#3b82f6' : '#94a3b8') + ';font-weight:600">' + design.phase + '</span>' +
+            '</div>';
+        
+        // 如果设计未开始，显示开始按钮
+        if (design.phase === '未开始') {
+            html += '<button class="btn btn-primary btn-full" onclick="GameActions.startDesign(\'' + project.id + '\')">开始设计</button>';
+        }
+        
+        html += '</div>';
+        
+        // 如果设计已开始，显示设计选项
+        if (isStarted || isComplete) {
+            html += '<div class="card" style="margin-top:16px">' +
+                '<div class="card-title">项目定位</div>' +
+                '<div class="card-subtitle" style="margin-top:8px">选择项目定位影响成本、售价和市场需求</div>' +
+                '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">' +
+                    positions.map(function(pos) {
+                        return '<button class="btn ' + (design.positioning === pos ? 'btn-primary' : 'btn-secondary') + ' btn-sm" ' +
+                            (!canEdit ? 'disabled' : 'onclick="GameActions.setPositioning(\'' + project.id + '\', \'' + pos + '\')"') + '>' + pos + '</button>';
+                    }).join('') +
                 '</div>' +
             '</div>';
+            
+            html += '<div class="card" style="margin-top:16px">' +
+                '<div class="card-title">外立面风格</div>' +
+                '<div class="card-subtitle" style="margin-top:8px">建筑外观风格影响项目品质和客户接受度</div>' +
+                '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">' +
+                    facades.map(function(facade) {
+                        return '<button class="btn ' + (design.facade === facade ? 'btn-primary' : 'btn-secondary') + ' btn-sm" ' +
+                            (!canEdit ? 'disabled' : 'onclick="GameActions.setFacade(\'' + project.id + '\', \'' + facade + '\')"') + '>' + facade + '</button>';
+                    }).join('') +
+                '</div>' +
+            '</div>';
+            
+            html += '<div class="card" style="margin-top:16px">' +
+                '<div class="card-title">📊 设计参数</div>' +
+                '<div style="display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                        '<span style="color:#94a3b8">成本系数</span>' +
+                        '<span style="font-weight:600;color:#f97316">×' + design.costCoefficient.toFixed(2) + '</span>' +
+                    '</div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                        '<span style="color:#94a3b8">售价系数</span>' +
+                        '<span style="font-weight:600;color:#22c55e">×' + design.priceCoefficient.toFixed(2) + '</span>' +
+                    '</div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                        '<span style="color:#94a3b8">需求系数</span>' +
+                        '<span style="font-weight:600;color:#3b82f6">×' + design.demandCoefficient.toFixed(2) + '</span>' +
+                    '</div>' +
+                    '<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;align-items:center">' +
+                        '<span style="color:#94a3b8">容积率</span>' +
+                        '<span style="font-weight:600">' + design.plotRatio.toFixed(2) + ' / ' + design.plotRatioLimit.toFixed(2) + '</span>' +
+                    '</div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                        '<span style="color:#94a3b8">绿化率</span>' +
+                        '<span style="font-weight:600">' + (design.greeningRate * 100).toFixed(0) + '%</span>' +
+                    '</div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                        '<span style="color:#94a3b8">建筑密度</span>' +
+                        '<span style="font-weight:600">' + (design.buildingDensity * 100).toFixed(0) + '%</span>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+            
+            // 预期收益预览
+            html += '<div class="card" style="margin-top:16px">' +
+                '<div class="card-title">💰 预算与收益</div>' +
+                '<div style="display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                        '<span style="color:#94a3b8">预计总成本</span>' +
+                        '<span style="font-weight:600;color:#f97316">' + Utils.formatMoney(project.cost.budget || 0) + '</span>' +
+                    '</div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                        '<span style="color:#94a3b8">预计总营收</span>' +
+                        '<span style="font-weight:600;color:#22c55e">' + Utils.formatMoney((project.cost.budget || 0) * design.priceCoefficient * 1.5) + '</span>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+            
+            // 如果设计进行中，显示完成按钮
+            if (isStarted) {
+                html += '<div class="card" style="margin-top:16px">' +
+                    '<button class="btn btn-primary btn-full" onclick="GameActions.completeDesign(\'' + project.id + '\')">✅ 完成设计</button>' +
+                '</div>';
+            }
+        }
+        
+        return html;
     },
     
     // 渲染工程管理标签页
     renderConstructionTab: function(project) {
-        return '<div class="section-title" style="margin-top:16px">🏗️ 工程管理</div>' +
-            '<div class="card">' +
-                '<div class="card-title">工程进度</div>' +
-                '<div class="card-subtitle" style="margin-top:8px">暂未开始施工</div>' +
+        const construction = project.construction;
+        const isStarted = construction.phase === '进行中';
+        const isComplete = construction.phase === '已完成';
+        const canEdit = !isComplete;
+        
+        let html = '<div class="section-title" style="margin-top:16px">🏗️ 工程管理</div>';
+        
+        // 阶段状态
+        html += '<div class="card">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+                '<span style="font-weight:600">当前阶段</span>' +
+                '<span style="color:' + (isComplete ? '#22c55e' : isStarted ? '#3b82f6' : '#94a3b8') + ';font-weight:600">' + construction.phase + '</span>' +
             '</div>';
+        
+        // 如果施工未开始，显示开始按钮
+        if (construction.phase === '未开始') {
+            html += '<button class="btn btn-primary btn-full" onclick="GameActions.startConstruction(\'' + project.id + '\')">开始施工</button>';
+        }
+        
+        html += '</div>';
+        
+        // 如果施工已开始或完成，显示施工详情
+        if (isStarted || isComplete) {
+            // 整体进度
+            html += '<div class="card" style="margin-top:16px">' +
+                '<div class="card-title">整体进度</div>' +
+                '<div style="display:flex;justify-content:space-between;margin-bottom:8px;margin-top:12px">' +
+                    '<span style="color:#94a3b8">施工进度</span>' +
+                    '<span style="font-weight:600">' + Math.round(construction.progress || 0) + '%</span>' +
+                '</div>' +
+                '<div class="progress-bar">' +
+                    '<div class="progress-fill" style="width:' + (construction.progress || 0) + '%"></div>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between;margin-top:12px">' +
+                    '<span style="color:#94a3b8">工程质量</span>' +
+                    '<span style="font-weight:600;color:' + ((construction.quality || 50) >= 80 ? '#22c55e' : (construction.quality || 50) >= 60 ? '#f97316' : '#ef4444') + '">' + Math.round(construction.quality || 50) + '/100</span>' +
+                '</div>' +
+            '</div>';
+            
+            // 分阶段进度
+            html += '<div class="card" style="margin-top:16px">' +
+                '<div class="card-title">施工阶段</div>';
+            
+            construction.phases.forEach(function(phase, index) {
+                const isCurrent = index === construction.currentPhase;
+                const isFinished = phase.completed;
+                
+                html += '<div style="margin-top:12px;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+                        '<span style="font-weight:' + (isCurrent ? '700' : '500') + ';color:' + (isCurrent ? '#3b82f6' : isFinished ? '#22c55e' : '#cbd5e1') + '">' + 
+                            (isFinished ? '✅ ' : isCurrent ? '📍 ' : '○ ') + phase.name + 
+                        '</span>' +
+                        '<span style="color:#94a3b8;font-size:13px">' + Math.round(phase.progress) + '%</span>' +
+                    '</div>' +
+                    '<div class="progress-bar" style="height:6px;">' +
+                        '<div class="progress-fill" style="width:' + phase.progress + '%;background:' + (isFinished ? '#22c55e' : isCurrent ? '#3b82f6' : '#64748b') + ';"></div>' +
+                    '</div>' +
+                '</div>';
+            });
+            
+            html += '</div>';
+            
+            // 如果施工进行中，显示完成按钮
+            if (isStarted) {
+                html += '<div class="card" style="margin-top:16px">' +
+                    '<button class="btn btn-primary btn-full" onclick="GameActions.completeConstruction(\'' + project.id + '\')">🎉 完成施工</button>' +
+                '</div>';
+            }
+        }
+        
+        return html;
     },
     
     // 渲染成本控制标签页
     renderCostTab: function(project) {
-        return '<div class="section-title" style="margin-top:16px">💰 成本控制</div>' +
-            '<div class="card">' +
-                '<div class="card-title">成本预算</div>' +
-                '<div class="card-subtitle" style="margin-top:8px">设计阶段确定后可查看详细成本</div>' +
+        const cost = project.cost;
+        const budget = cost.budget || 0;
+        const actual = cost.actualCost || 0;
+        const remaining = Math.max(0, budget - actual);
+        const progress = budget > 0 ? (actual / budget) * 100 : 0;
+        
+        let html = '<div class="section-title" style="margin-top:16px">💰 成本控制</div>';
+        
+        // 预算概览
+        html += '<div class="card">' +
+            '<div class="card-title">成本概览</div>' +
+            '<div style="display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                    '<span style="color:#94a3b8">总预算</span>' +
+                    '<span style="font-weight:700;color:#f97316">' + Utils.formatMoney(budget) + '</span>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                    '<span style="color:#94a3b8">已支出</span>' +
+                    '<span style="font-weight:700;color:#ef4444">' + Utils.formatMoney(actual) + '</span>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                    '<span style="color:#94a3b8">剩余预算</span>' +
+                    '<span style="font-weight:700;color:#22c55e">' + Utils.formatMoney(remaining) + '</span>' +
+                '</div>' +
+            '</div>' +
+            '<div style="margin-top:16px">' +
+                '<div style="display:flex;justify-content:space-between;margin-bottom:8px">' +
+                    '<span style="color:#94a3b8">预算使用率</span>' +
+                    '<span style="font-weight:600">' + Math.round(progress) + '%</span>' +
+                '</div>' +
+                '<div class="progress-bar">' +
+                    '<div class="progress-fill" style="width:' + Math.min(100, progress) + '%;background:' + (progress > 90 ? '#ef4444' : progress > 70 ? '#f97316' : '#22c55e') + ';"></div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+        
+        // 成本细分
+        const breakdown = cost.costBreakdown || {};
+        html += '<div class="card" style="margin-top:16px">' +
+            '<div class="card-title">成本明细</div>' +
+            '<div style="display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px">';
+        
+        const breakdownItems = [
+            { key: 'land', label: '土地成本' },
+            { key: 'construction', label: '建设成本' },
+            { key: 'design', label: '设计成本' },
+            { key: 'marketing', label: '营销成本' },
+            { key: 'other', label: '其他成本' }
+        ];
+        
+        breakdownItems.forEach(function(item) {
+            const value = breakdown[item.key] || 0;
+            const percentage = budget > 0 ? (value / budget) * 100 : 0;
+            html += '<div>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+                    '<span style="color:#cbd5e1">' + item.label + '</span>' +
+                    '<span style="font-weight:600">' + Utils.formatMoney(value) + ' (' + percentage.toFixed(1) + '%)</span>' +
+                '</div>' +
+                '<div class="progress-bar" style="height:4px;">' +
+                    '<div class="progress-fill" style="width:' + percentage + '%;background:#3b82f6;"></div>' +
+                '</div>' +
             '</div>';
+        });
+        
+        html += '</div></div>';
+        
+        return html;
     },
     
     // 渲染招采管理标签页
     renderProcurementTab: function(project) {
-        return '<div class="section-title" style="margin-top:16px">📦 招采管理</div>' +
-            '<div class="card">' +
-                '<div class="card-title">供应商管理</div>' +
-                '<div class="card-subtitle" style="margin-top:8px">施工阶段可进行招采</div>' +
+        const procurement = project.procurement || { suppliers: [], materials: [] };
+        
+        let html = '<div class="section-title" style="margin-top:16px">📦 招采管理</div>';
+        
+        // 供应商列表
+        html += '<div class="card">' +
+            '<div class="card-title">合作供应商</div>';
+        
+        if (procurement.suppliers.length === 0) {
+            html += '<div style="margin-top:12px;color:#94a3b8;text-align:center;padding:20px">暂无供应商，施工阶段可进行招采</div>';
+        } else {
+            procurement.suppliers.forEach(function(supplier) {
+                html += '<div style="margin-top:12px;padding:12px;background:#1e293b;border-radius:10px;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                        '<span style="font-weight:600">' + supplier.name + '</span>' +
+                        '<span style="color:#94a3b8;font-size:13px">' + supplier.type + '</span>' +
+                    '</div>' +
+                    '<div style="margin-top:6px;color:#94a3b8;font-size:13px">合作金额：' + Utils.formatMoney(supplier.amount || 0) + '</div>' +
+                '</div>';
+            });
+        }
+        
+        html += '</div>';
+        
+        // 材料清单
+        html += '<div class="card" style="margin-top:16px">' +
+            '<div class="card-title">材料清单</div>';
+        
+        const defaultMaterials = [
+            { name: '钢材', quantity: 500, unit: '吨', status: '待采购' },
+            { name: '水泥', quantity: 2000, unit: '吨', status: '待采购' },
+            { name: '混凝土', quantity: 10000, unit: '方', status: '待采购' },
+            { name: '木材', quantity: 300, unit: '方', status: '待采购' },
+            { name: '装修材料', quantity: 1, unit: '批', status: '待采购' }
+        ];
+        
+        const materials = procurement.materials.length > 0 ? procurement.materials : defaultMaterials;
+        
+        materials.forEach(function(material) {
+            html += '<div style="margin-top:10px;padding:10px;background:#1e293b;border-radius:8px;display:flex;justify-content:space-between;align-items:center">' +
+                '<div>' +
+                    '<div style="font-weight:500">' + material.name + '</div>' +
+                    '<div style="color:#94a3b8;font-size:12px;margin-top:4px">数量：' + material.quantity + ' ' + material.unit + '</div>' +
+                '</div>' +
+                '<span style="padding:4px 10px;border-radius:6px;font-size:12px;background:' + (material.status === '已采购' ? '#05966930' : '#f9731630') + ';color:' + (material.status === '已采购' ? '#22c55e' : '#f97316') + '">' + material.status + '</span>' +
             '</div>';
+        });
+        
+        html += '</div>';
+        
+        return html;
     },
     
     // 渲染单元规划标签页
     renderPlanningTab: function(project) {
-        return '<div class="section-title" style="margin-top:16px">🏘️ 单元规划</div>' +
-            '<div class="card">' +
-                '<div class="card-title">户型规划</div>' +
-                '<div class="card-subtitle" style="margin-top:8px">设计阶段完成后可规划户型</div>' +
+        const planning = project.planning || { units: [], totalUnits: 0, unitTypes: [] };
+        
+        let html = '<div class="section-title" style="margin-top:16px">🏘️ 单元规划</div>';
+        
+        // 户型类型
+        html += '<div class="card">' +
+            '<div class="card-title">户型规划</div>';
+        
+        const defaultUnitTypes = [
+            { name: '一居室', area: 50, count: 20, price: 0 },
+            { name: '两居室', area: 80, count: 30, price: 0 },
+            { name: '三居室', area: 120, count: 25, price: 0 },
+            { name: '四居室', area: 160, count: 10, price: 0 }
+        ];
+        
+        const unitTypes = planning.unitTypes.length > 0 ? planning.unitTypes : defaultUnitTypes;
+        let totalUnits = 0;
+        let totalArea = 0;
+        
+        unitTypes.forEach(function(type) {
+            totalUnits += type.count;
+            totalArea += type.count * type.area;
+        });
+        
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;margin-bottom:16px">' +
+            '<div style="text-align:center;padding:12px;background:#1e293b;border-radius:10px">' +
+                '<div style="font-size:24px;font-weight:700;color:#3b82f6">' + totalUnits + '</div>' +
+                '<div style="color:#94a3b8;font-size:13px">总户数</div>' +
+            '</div>' +
+            '<div style="text-align:center;padding:12px;background:#1e293b;border-radius:10px">' +
+                '<div style="font-size:24px;font-weight:700;color:#22c55e">' + Utils.formatArea(totalArea) + '</div>' +
+                '<div style="color:#94a3b8;font-size:13px">总面积</div>' +
+            '</div>' +
+        '</div>';
+        
+        unitTypes.forEach(function(type) {
+            html += '<div style="margin-top:10px;padding:12px;background:#1e293b;border-radius:10px">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                    '<span style="font-weight:600">' + type.name + '</span>' +
+                    '<span style="color:#f97316">' + type.count + ' 户</span>' +
+                '</div>' +
+                '<div style="margin-top:6px;color:#94a3b8;font-size:13px">单户面积：' + Utils.formatArea(type.area) + ' | 小计：' + Utils.formatArea(type.count * type.area) + '</div>' +
             '</div>';
+        });
+        
+        html += '</div>';
+        
+        // 景观规划
+        html += '<div class="card" style="margin-top:16px">' +
+            '<div class="card-title">景观规划</div>' +
+            '<div style="margin-top:12px;display:grid;grid-template-columns:1fr;gap:8px">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#1e293b;border-radius:8px">' +
+                    '<span style="color:#cbd5e1">绿化率</span>' +
+                    '<span style="font-weight:600;color:#22c55e">' + ((project.design?.greeningRate || 0.3) * 100).toFixed(0) + '%</span>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#1e293b;border-radius:8px">' +
+                    '<span style="color:#cbd5e1">容积率</span>' +
+                    '<span style="font-weight:600;color:#3b82f6">' + (project.design?.plotRatio || 2.5).toFixed(2) + '</span>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#1e293b;border-radius:8px">' +
+                    '<span style="color:#cbd5e1">建筑密度</span>' +
+                    '<span style="font-weight:600;color:#f97316">' + ((project.design?.buildingDensity || 0.25) * 100).toFixed(0) + '%</span>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+        
+        return html;
     },
     
     // 渲染项目资金管理标签页
     renderProjectFinanceTab: function(project) {
-        return '<div class="section-title" style="margin-top:16px">💳 资金管理</div>' +
-            '<div class="card">' +
-                '<div class="card-title">资金计划</div>' +
-                '<div class="card-subtitle" style="margin-top:8px">根据工程进度安排资金</div>' +
+        const finance = project.finance || { cashFlow: [], budget: [] };
+        
+        let html = '<div class="section-title" style="margin-top:16px">💳 资金管理</div>';
+        
+        // 资金状态
+        const totalCost = project.cost?.budget || 0;
+        const spent = project.cost?.actualCost || 0;
+        const remaining = Math.max(0, totalCost - spent);
+        
+        html += '<div class="card">' +
+            '<div class="card-title">资金状态</div>' +
+            '<div style="display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                    '<span style="color:#94a3b8">项目总投入</span>' +
+                    '<span style="font-weight:700;color:#f97316">' + Utils.formatMoney(totalCost) + '</span>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                    '<span style="color:#94a3b8">已投入资金</span>' +
+                    '<span style="font-weight:700;color:#ef4444">' + Utils.formatMoney(spent) + '</span>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                    '<span style="color:#94a3b8">待投入资金</span>' +
+                    '<span style="font-weight:700;color:#22c55e">' + Utils.formatMoney(remaining) + '</span>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+        
+        // 资金计划
+        html += '<div class="card" style="margin-top:16px">' +
+            '<div class="card-title">资金计划</div>';
+        
+        const phases = [
+            { name: '四证办理', cost: project.cost?.costBreakdown?.design || 500000 },
+            { name: '设计阶段', cost: project.cost?.costBreakdown?.design || 500000 },
+            { name: '地基施工', cost: (project.constructionCost || 0) * 0.2 },
+            { name: '主体结构', cost: (project.constructionCost || 0) * 0.4 },
+            { name: '内外装修', cost: (project.constructionCost || 0) * 0.25 },
+            { name: '设备安装', cost: (project.constructionCost || 0) * 0.1 },
+            { name: '竣工验收', cost: (project.constructionCost || 0) * 0.05 }
+        ];
+        
+        phases.forEach(function(phase, index) {
+            const isActive = index <= (project.currentStage || 0);
+            html += '<div style="margin-top:10px;padding:10px;background:#1e293b;border-radius:8px;display:flex;justify-content:space-between;align-items:center;opacity:' + (isActive ? '1' : '0.6') + '">' +
+                '<span style="font-weight:' + (isActive ? '600' : '500') + '">' + phase.name + '</span>' +
+                '<span style="color:#f97316">' + Utils.formatMoney(phase.cost) + '</span>' +
             '</div>';
+        });
+        
+        html += '</div>';
+        
+        // 预期收益
+        const expectedRevenue = (totalCost * (project.design?.priceCoefficient || 1.0) * 1.5);
+        const expectedProfit = expectedRevenue - totalCost;
+        const profitMargin = totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0;
+        
+        html += '<div class="card" style="margin-top:16px">' +
+            '<div class="card-title">预期收益</div>' +
+            '<div style="display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                    '<span style="color:#94a3b8">预期总营收</span>' +
+                    '<span style="font-weight:700;color:#22c55e">' + Utils.formatMoney(expectedRevenue) + '</span>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                    '<span style="color:#94a3b8">预期利润</span>' +
+                    '<span style="font-weight:700;color:#3b82f6">' + Utils.formatMoney(expectedProfit) + '</span>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                    '<span style="color:#94a3b8">预期利润率</span>' +
+                    '<span style="font-weight:700;color:#f97316">' + profitMargin.toFixed(1) + '%</span>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+        
+        return html;
     },
     
     // 渲染营销页面
