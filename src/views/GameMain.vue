@@ -695,16 +695,16 @@
           </div>
         </div>
 
-        <!-- 基础支撑页面 -->
+        <!-- 设置页面 -->
         <div v-else-if="activeTab === 'base'">
-          <div class="section-title">📊 基础支撑</div>
+          <div class="section-title">🎮 游戏设置</div>
 
-          <div class="module-btn mb-3 cursor-pointer" @click="showToast('财务系统功能开发中')">
+          <div class="module-btn mb-3 cursor-pointer" @click="showToast('声音设置功能开发中')">
             <div class="module-btn__left">
-              <div class="module-btn__icon">💰</div>
+              <div class="module-btn__icon">🔊</div>
               <div class="module-btn__content">
-                <div class="module-btn__title">财务系统</div>
-                <div class="module-btn__subtitle">查看财务报表和分析数据</div>
+                <div class="module-btn__title">声音设置</div>
+                <div class="module-btn__subtitle">调整背景音乐和音效</div>
               </div>
             </div>
             <div class="module-btn__right">
@@ -712,12 +712,12 @@
             </div>
           </div>
 
-          <div class="module-btn mb-3 cursor-pointer" @click="showToast('宏观经济功能开发中')">
+          <div class="module-btn mb-3 cursor-pointer" @click="showToast('显示设置功能开发中')">
             <div class="module-btn__left">
-              <div class="module-btn__icon">📈</div>
+              <div class="module-btn__icon">🖥️</div>
               <div class="module-btn__content">
-                <div class="module-btn__title">宏观经济</div>
-                <div class="module-btn__subtitle">查看宏观经济数据和趋势</div>
+                <div class="module-btn__title">显示设置</div>
+                <div class="module-btn__subtitle">调整界面显示效果</div>
               </div>
             </div>
             <div class="module-btn__right">
@@ -725,12 +725,12 @@
             </div>
           </div>
 
-          <div class="module-btn mb-3 cursor-pointer" @click="showToast('政策动态功能开发中')">
+          <div class="module-btn mb-3 cursor-pointer" @click="router.push('/saves')">
             <div class="module-btn__left">
-              <div class="module-btn__icon">📜</div>
+              <div class="module-btn__icon">💾</div>
               <div class="module-btn__content">
-                <div class="module-btn__title">政策动态</div>
-                <div class="module-btn__subtitle">了解最新房地产政策变化</div>
+                <div class="module-btn__title">存档管理</div>
+                <div class="module-btn__subtitle">保存和加载游戏进度</div>
               </div>
             </div>
             <div class="module-btn__right">
@@ -738,12 +738,12 @@
             </div>
           </div>
 
-          <div class="module-btn mb-3 cursor-pointer" @click="showToast('AI竞品功能开发中')">
+          <div class="module-btn mb-3 cursor-pointer" @click="showToast('更新日志功能开发中')">
             <div class="module-btn__left">
-              <div class="module-btn__icon">🤖</div>
+              <div class="module-btn__icon">📝</div>
               <div class="module-btn__content">
-                <div class="module-btn__title">AI竞品</div>
-                <div class="module-btn__subtitle">分析竞争对手动态</div>
+                <div class="module-btn__title">更新日志</div>
+                <div class="module-btn__subtitle">查看游戏版本更新记录</div>
               </div>
             </div>
             <div class="module-btn__right">
@@ -751,12 +751,12 @@
             </div>
           </div>
 
-          <div class="module-btn mb-3 cursor-pointer" @click="showToast('成就系统功能开发中')">
+          <div class="module-btn mb-3 cursor-pointer" @click="showToast('关于游戏功能开发中')">
             <div class="module-btn__left">
-              <div class="module-btn__icon">🏆</div>
+              <div class="module-btn__icon">ℹ️</div>
               <div class="module-btn__content">
-                <div class="module-btn__title">成就系统</div>
-                <div class="module-btn__subtitle">查看和解锁游戏成就</div>
+                <div class="module-btn__title">关于游戏</div>
+                <div class="module-btn__subtitle">了解游戏信息和版本</div>
               </div>
             </div>
             <div class="module-btn__right">
@@ -764,12 +764,12 @@
             </div>
           </div>
 
-          <div class="module-btn cursor-pointer" @click="showToast('排行榜功能开发中')">
+          <div class="module-btn cursor-pointer" @click="router.push('/')">
             <div class="module-btn__left">
-              <div class="module-btn__icon">🏅</div>
+              <div class="module-btn__icon">🏠</div>
               <div class="module-btn__content">
-                <div class="module-btn__title">排行榜</div>
-                <div class="module-btn__subtitle">查看游戏排名和榜单</div>
+                <div class="module-btn__title">返回主菜单</div>
+                <div class="module-btn__subtitle">退出游戏回到主菜单</div>
               </div>
             </div>
             <div class="module-btn__right">
@@ -843,7 +843,7 @@ const secondRowTabs = [
   { id: 'personal', name: '个人', icon: '👤' },
   { id: 'brand', name: '品牌', icon: '🌟' },
   { id: 'governance', name: '治理', icon: '🏛️' },
-  { id: 'base', name: '基础', icon: '📊' }
+  { id: 'base', name: '设置', icon: '⚙️' }
 ]
 
 const investmentTabs = ['城市研究', '土地市场', '土地储备', '市场趋势', '竞争对手', '资产交易']
