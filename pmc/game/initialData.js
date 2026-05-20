@@ -475,7 +475,7 @@ const InitialData = {
             constructionCost: devData.constructionCost,
             constructionDuration: devData.duration,
             profitRate: devData.profitRate,
-            description: `${devType}项目，位于${city.name}黄金地段，发展潜力大`
+            description: devType + '项目，位于' + city.name + '黄金地段，发展潜力大'
         };
     },
     

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Test</title>
+</head>
+<body>
+    <script src="game/types.js"></script>
+    <script>
+        if (typeof GameTypes !== 'undefined') {
+            console.log('GameTypes loaded successfully');
+            document.body.innerHTML = '<h1>Success! GameTypes is defined</h1>';
+        } else {
+            console.error('GameTypes not defined');
+            document.body.innerHTML = '<h1 style="color:red">Error: GameTypes not defined</h1>';
+        }
+    </script>
+</body>
+</html>

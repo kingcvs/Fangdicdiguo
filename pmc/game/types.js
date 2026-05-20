@@ -134,7 +134,7 @@ const GameTypes = {
         WORKING: 'working',
         DEVELOPMENT: 'development',
         PROPERTY: 'property',
-        M&A: 'm&a'
+        'M&A': 'm&a'
     },
     
     // 融资轮次
