@@ -172,7 +172,88 @@ export const useGameStore = defineStore('game', () => {
   
   function createNewGame(registrationData: any) {
     isLoading.value = true
-    // TODO: 实现完整的游戏创建逻辑
+    
+    // 创建初始游戏状态
+    gameState.value = {
+      version: '3.0.0',
+      isInGame: true,
+      gameTime: {
+        year: 2008,
+        month: 0,
+        day: 1
+      },
+      company: {
+        id: 'company_1',
+        name: registrationData.companyName || '我的房地产公司',
+        registrationProvince: registrationData.province || '北京',
+        registrationCity: registrationData.province || '北京',
+        establishmentDate: '2008-01-01',
+        creditCode: '91110000MA001ABCDE',
+        legalRepresentative: registrationData.legalRepresentative || '创始人',
+        registeredAddress: registrationData.province ? `${registrationData.province}市朝阳区` : '北京市朝阳区',
+        enterpriseType: registrationData.enterpriseType || 'limited',
+        registeredCapital: registrationData.registeredCapital || 50000000,
+        paidInCapital: registrationData.paidInCapital || 50000000,
+        shareStructure: (registrationData.shareholders || []).map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          sharePercentage: s.sharePercentage,
+          isPlayer: s.isPlayer
+        })),
+        qualificationLevel: 4,
+        creditRating: 'C',
+        cash: registrationData.paidInCapital || 50000000,
+        totalAssets: registrationData.paidInCapital || 50000000,
+        totalLiabilities: 0,
+        monthlyProfit: 0,
+        brand: {
+          score: 50,
+          level: 'unknown'
+        },
+        executives: [],
+        employees: [],
+        threeRedLines: {
+          assetLiabilityRatio: 0,
+          netDebtRatio: 0,
+          cashShortDebtRatio: 2.0
+        }
+      },
+      player: {
+        nickname: registrationData.legalRepresentative || '创业者',
+        personalAssets: [],
+        relationships: [],
+        abilities: {
+          negotiation: 50,
+          management: 50,
+          riskPrediction: 50,
+          publicRelations: 50
+        },
+        socialStatus: {
+          level: 1,
+          titles: [],
+          reputation: 50
+        },
+        risks: {
+          taxRisk: 0,
+          briberyRisk: 0,
+          publicOpinionRisk: 0,
+          healthRisk: 0
+        }
+      },
+      landReserves: [],
+      projects: [],
+      aiCompetitors: [],
+      macroEconomy: {
+        gdpGrowthRate: 5,
+        interestRate: 0.05,
+        urbanizationRate: 50,
+        population: 1400000000,
+        housingPriceIndex: 1.0
+      },
+      policies: [],
+      achievements: []
+    }
+    
     setTimeout(() => {
       isLoading.value = false
     }, 500)

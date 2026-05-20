@@ -6,23 +6,23 @@
         <p class="text-amber-400 font-semibold">{{ currentStepInfo.title }}</p>
       </div>
 
-      <div class="flex justify-center mb-6 overflow-x-auto">
-        <div class="flex items-center gap-2">
-          <div v-for="step in steps" :key="step.step" class="flex items-center">
+      <div class="flex justify-center mb-6">
+        <div class="flex items-center gap-2 flex-wrap">
+            <div v-for="step in steps" :key="step.step" class="flex items-center">
             <div 
-              class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all"
-              :class="[
+                class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all"
+                :class="[
                 step.step < currentStep ? 'bg-amber-400 text-black' : 
                 step.step === currentStep ? 'bg-amber-500 text-black scale-110' : 
                 'bg-gray-700 text-gray-400'
-              ]"
+                ]"
             >
-              {{ step.step }}
+                {{ step.step }}
             </div>
             <div v-if="step.step < steps.length" class="w-4 h-0.5 bg-gray-600"></div>
-          </div>
+            </div>
         </div>
-      </div>
+        </div>
 
       <div class="bg-game-card/80 backdrop-blur-sm rounded-xl p-6 border border-white/10">
         <Step1Province v-if="currentStep === 1" @complete="nextStep" />

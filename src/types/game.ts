@@ -28,7 +28,8 @@ export interface Company {
   enterpriseType: 'limited' | 'one-person' | 'partnership'
   registeredCapital: number
   paidInCapital: number
-  shareStructure: Shareholder[]
+  shareStructure?: Shareholder[]
+  shareholders?: Shareholder[]
   qualificationLevel: 1 | 2 | 3 | 4
   creditRating: 'AAA' | 'AA' | 'A' | 'B' | 'C'
   cash: number
