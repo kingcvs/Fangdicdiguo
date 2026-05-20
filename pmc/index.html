@@ -3,58 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#0d1b2a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
-    <title>房地产帝国 - 公司模拟经营</title>
+    <title>房地产帝国</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <!-- 主菜单 -->
     <div id="mainMenu" class="main-menu">
-        <div class="menu-container">
-            <div class="game-logo">
-                <div class="logo-icon">🏢</div>
-                <h1 class="game-title">房地产帝国</h1>
-                <p class="game-subtitle">REAL ESTATE TYCOON</p>
+        <div class="menu-hero">
+            <div class="hero-content">
+                <p class="hero-subtitle">商业模拟经营</p>
+                <h1 class="hero-title">房地产帝国</h1>
+                <p class="hero-description">从第一块土地开始，建立你的商业王朝。</p>
+                <div class="hero-divider"></div>
+                <div class="menu-actions">
+                    <button class="menu-action primary" onclick="MenuSystem.newGame()">
+                        <div class="menu-action-content">
+                            <span class="menu-action-icon">🎮</span>
+                            <div>
+                                <span class="menu-action-label">开始游戏</span>
+                                <span class="menu-action-sub">建立新的商业帝国</span>
+                            </div>
+                        </div>
+                        <div class="menu-action-arrow">→</div>
+                    </button>
+                    <button class="menu-action" id="continueBtn" onclick="MenuSystem.continueGame()">
+                        <div class="menu-action-content">
+                            <span class="menu-action-icon">▶️</span>
+                            <div>
+                                <span class="menu-action-label">继续游戏</span>
+                                <span class="menu-action-sub">从存档中继续</span>
+                            </div>
+                        </div>
+                        <div class="menu-action-arrow">→</div>
+                    </button>
+                    <button class="menu-action" onclick="MenuSystem.showSaveManager()">
+                        <div class="menu-action-content">
+                            <span class="menu-action-icon">💾</span>
+                            <div>
+                                <span class="menu-action-label">存档管理</span>
+                                <span class="menu-action-sub">管理你的游戏存档</span>
+                            </div>
+                        </div>
+                        <div class="menu-action-arrow">→</div>
+                    </button>
+                    <button class="menu-action" onclick="MenuSystem.showChangelog()">
+                        <div class="menu-action-content">
+                            <span class="menu-action-icon">📝</span>
+                            <div>
+                                <span class="menu-action-label">更新日志</span>
+                                <span class="menu-action-sub">查看版本更新</span>
+                            </div>
+                        </div>
+                        <div class="menu-action-arrow">→</div>
+                    </button>
+                </div>
             </div>
-            
-            <div class="menu-buttons">
-                <button class="menu-btn primary" onclick="MenuSystem.newGame()">
-                    <span class="btn-icon">🎮</span>
-                    <span>开始游戏</span>
-                </button>
-                <button class="menu-btn" id="continueBtn" onclick="MenuSystem.continueGame()">
-                    <span class="btn-icon">▶️</span>
-                    <span>继续游戏</span>
-                </button>
-                <button class="menu-btn" onclick="MenuSystem.showSaveManager()">
-                    <span class="btn-icon">💾</span>
-                    <span>存档管理</span>
-                </button>
-                <button class="menu-btn" onclick="MenuSystem.showChangelog()">
-                    <span class="btn-icon">📝</span>
-                    <span>更新日志</span>
-                </button>
-            </div>
-            
-            <div class="game-version" id="gameVersion">
-                v2.0 GOLD
-            </div>
+        </div>
+        <div class="menu-footer">
+            <p class="menu-version" id="gameVersion">v2.1</p>
         </div>
     </div>
 
     <!-- 游戏界面 -->
     <div id="app" class="game-app" style="display: none;">
-        <!-- 顶部时间栏 -->
+        <!-- 顶部状态栏 -->
         <header id="header" class="header">
             <div class="date-display" id="dateDisplay">📅 2008年1月1日</div>
             <div class="time-controls">
                 <button id="pauseBtn" class="time-btn active">⏸</button>
-                <button id="speed1x" class="time-btn" data-speed="1">1x</button>
-                <button id="speed2x" class="time-btn" data-speed="2">2x</button>
-                <button id="speed3x" class="time-btn" data-speed="3">3x</button>
+                <button id="speed1x" class="time-btn" data-speed="1">1×</button>
+                <button id="speed2x" class="time-btn" data-speed="2">2×</button>
+                <button id="speed3x" class="time-btn" data-speed="3">3×</button>
                 <button class="time-btn" onclick="MenuSystem.returnToMenu()" title="返回菜单">🏠</button>
             </div>
         </header>
