@@ -784,7 +784,7 @@
     <div class="fixed bottom-0 left-0 right-0 bg-game-card/95 border-t border-white/10">
       <div class="max-w-md mx-auto">
         <!-- 第一行导航 -->
-        <div class="grid grid-cols-4 gap-1 py-2 px-2 border-b border-white/10">
+        <div class="grid grid-cols-5 gap-1 py-2 px-2 border-b border-white/10">
           <button
             v-for="tab in firstRowTabs"
             :key="tab.id"
@@ -833,12 +833,12 @@ const firstRowTabs = [
   { id: 'overview', name: '总览', icon: '🏠' },
   { id: 'investment', name: '投资', icon: '📈' },
   { id: 'project', name: '工程', icon: '🏗️' },
-  { id: 'marketing', name: '营销', icon: '📣' }
+  { id: 'marketing', name: '营销', icon: '📣' },
+  { id: 'operation', name: '运营', icon: '👥' }
 ]
 
 // 第二行导航
 const secondRowTabs = [
-  { id: 'operation', name: '运营', icon: '👥' },
   { id: 'capital', name: '资本', icon: '💵' },
   { id: 'personal', name: '个人', icon: '👤' },
   { id: 'brand', name: '品牌', icon: '🌟' },

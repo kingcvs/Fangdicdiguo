@@ -125,7 +125,7 @@ export const useRegistrationStore = defineStore('registration', () => {
     // 如果是一人公司，重置股东为玩家100%
     if (type === 'one-person') {
       data.value.shareholders = [
-        { id: '1', name: '玩家', ratio: 100, isPlayer: true }
+        { id: '1', name: '玩家', ratio: 100, isPlayer: true, capital: paidCapital.value }
       ]
     }
   }
@@ -192,6 +192,7 @@ export const useRegistrationStore = defineStore('registration', () => {
   
   function reset() {
     currentStep.value = 1
+    const defaultPaidCapital = Math.floor(50000000 * 20 / 100)
     data.value = {
       provinceId: null,
       provinceName: '',
@@ -199,7 +200,7 @@ export const useRegistrationStore = defineStore('registration', () => {
       fullCompanyName: '',
       enterpriseType: null,
       shareholders: [
-        { id: '1', name: '玩家', ratio: 100, isPlayer: true }
+        { id: '1', name: '玩家', ratio: 100, isPlayer: true, capital: defaultPaidCapital }
       ],
       registeredCapital: 50000000,
       paidRatio: 20,

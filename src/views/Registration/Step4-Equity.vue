@@ -85,12 +85,15 @@
       
       <!-- 添加股东 -->
       <button
-        v-if="shareholders.length < 5"
+        v-if="shareholders.length < 3"
         @click="addNewShareholder"
         class="w-full py-3 border-2 border-dashed border-white/20 rounded-xl text-white/60 hover:border-amber-500 hover:text-amber-400 transition-all"
       >
-        + 添加股东
+        + 添加股东 (最多3位)
       </button>
+      <div v-else class="text-center text-white/50 text-sm py-2">
+        已达最大股东数量 (3位)
+      </div>
       
       <!-- 汇总信息 -->
       <div class="grid grid-cols-2 gap-3 mb-4">
@@ -165,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRegistrationStore } from '@/stores/registration'
 
@@ -195,38 +198,48 @@ function formatMoney(num: number): string {
 }
 
 function adjustRatios(changedId: string) {
-  const others = shareholders.value.filter(s => s.id !== changedId)
-  const changed = shareholders.value.find(s => s.id === changedId)
-  
-  if (changed && others.length > 0) {
-    const remaining = 100 - changed.ratio
-    const currentOthersTotal = others.reduce((sum, s) => sum + s.ratio, 0)
+    const others = shareholders.value.filter(s => s.id !== changedId)
+    const changed = shareholders.value.find(s => s.id === changedId)
     
-    if (currentOthersTotal > 0) {
-      const ratio = remaining / currentOthersTotal
-      others.forEach(s => {
-        s.ratio = Math.round(s.ratio * ratio)
-      })
+    if (changed && others.length > 0) {
+      const remaining = 100 - changed.ratio
+      const currentOthersTotal = others.reduce((sum, s) => sum + s.ratio, 0)
+      
+      if (currentOthersTotal > 0) {
+        const ratio = remaining / currentOthersTotal
+        others.forEach(s => {
+          s.ratio = Math.round(s.ratio * ratio)
+        })
+      }
+      
+      // 确保总和为100
+      const newTotal = shareholders.value.reduce((sum, s) => sum + s.ratio, 0)
+      if (newTotal !== 100) {
+        const last = shareholders.value[shareholders.value.length - 1]
+        last.ratio += (100 - newTotal)
+      }
+      
+      // 更新出资额
+      updateAllCapitals()
     }
-    
-    // 确保总和为100
-    const newTotal = shareholders.value.reduce((sum, s) => sum + s.ratio, 0)
-    if (newTotal !== 100) {
-      const last = shareholders.value[shareholders.value.length - 1]
-      last.ratio += (100 - newTotal)
-    }
-    
-    // 更新出资额
-    updateAllCapitals()
   }
-}
-
-function updateAllCapitals() {
-  shareholders.value.forEach(shareholder => {
-    const expectedCapital = Math.floor((paidCapital.value * shareholder.ratio) / 100)
-    shareholder.capital = expectedCapital
+  
+  function updateAllCapitals() {
+    shareholders.value.forEach(shareholder => {
+      const expectedCapital = Math.floor((paidCapital.value * shareholder.ratio) / 100)
+      shareholder.capital = expectedCapital
+    })
+  }
+  
+  // 初始化时和paidCapital变化时更新所有出资额
+  onMounted(() => {
+    updateAllCapitals()
   })
-}
+  
+  // 监听paidCapital变化，更新所有出资额
+  watch(paidCapital, () => {
+    updateAllCapitals()
+  })
 
 function updateCapital(id: string, capital: number) {
   registrationStore.updateShareholderCapital(id, capital)

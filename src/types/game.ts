@@ -47,6 +47,7 @@ export interface Shareholder {
   name: string
   sharePercentage: number
   isPlayer: boolean
+  capital?: number
 }
 
 export interface Brand {

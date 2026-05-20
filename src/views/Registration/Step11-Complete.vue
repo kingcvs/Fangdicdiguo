@@ -15,7 +15,7 @@
           <span class="text-white">{{ registrationStore.data.provinceName }}</span>
         </div>
         <div class="flex justify-between text-sm">
-          <span class="text-gray-400">企业类型</span>
+          <span class="text-gray-400">企业性质</span>
           <span class="text-white">{{ enterpriseTypeName }}</span>
         </div>
         <div class="flex justify-between text-sm">
@@ -28,7 +28,7 @@
         </div>
         <div class="flex justify-between text-sm">
           <span class="text-gray-400">实缴资本</span>
-          <span class="text-white">{{ (registrationStore.data.paidCapital / 10000).toFixed(0) }}万元</span>
+          <span class="text-white">{{ (registrationStore.paidCapital / 10000).toFixed(0) }}万元</span>
         </div>
         <div class="flex justify-between text-sm">
           <span class="text-gray-400">开户银行</span>

@@ -173,6 +173,9 @@ export const useGameStore = defineStore('game', () => {
   function createNewGame(registrationData: any) {
     isLoading.value = true
     
+    // 计算实缴资本
+    const paidCapital = Math.floor((registrationData.registeredCapital || 50000000) * (registrationData.paidRatio || 20) / 100)
+    
     // 创建初始游戏状态
     gameState.value = {
       version: '3.0.0',
@@ -184,26 +187,27 @@ export const useGameStore = defineStore('game', () => {
       },
       company: {
         id: 'company_1',
-        name: registrationData.companyName || '我的房地产公司',
-        registrationProvince: registrationData.province || '北京',
-        registrationCity: registrationData.province || '北京',
+        name: registrationData.fullCompanyName || '我的房地产公司',
+        registrationProvince: registrationData.provinceName || '北京',
+        registrationCity: registrationData.provinceName || '北京',
         establishmentDate: '2008-01-01',
-        creditCode: '91110000MA001ABCDE',
+        creditCode: registrationData.creditCode || '91110000MA001ABCDE',
         legalRepresentative: registrationData.legalRepresentative || '创始人',
-        registeredAddress: registrationData.province ? `${registrationData.province}市朝阳区` : '北京市朝阳区',
+        registeredAddress: registrationData.registeredAddress || (registrationData.provinceName ? `${registrationData.provinceName}市朝阳区` : '北京市朝阳区'),
         enterpriseType: registrationData.enterpriseType || 'limited',
         registeredCapital: registrationData.registeredCapital || 50000000,
-        paidInCapital: registrationData.paidInCapital || 50000000,
-        shareStructure: (registrationData.shareholders || []).map((s: any) => ({
+        paidInCapital: paidCapital,
+        shareholders: (registrationData.shareholders || []).map((s: any) => ({
           id: s.id,
           name: s.name,
-          sharePercentage: s.sharePercentage,
-          isPlayer: s.isPlayer
+          sharePercentage: s.ratio,
+          isPlayer: s.isPlayer,
+          capital: s.capital
         })),
         qualificationLevel: 4,
         creditRating: 'C',
-        cash: registrationData.paidInCapital || 50000000,
-        totalAssets: registrationData.paidInCapital || 50000000,
+        cash: paidCapital,
+        totalAssets: paidCapital,
         totalLiabilities: 0,
         monthlyProfit: 0,
         brand: {

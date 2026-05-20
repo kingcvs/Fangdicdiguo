@@ -8,62 +8,71 @@
       选择公司注册地，此将决定您的初始可开发区域
     </p>
     
-    <!-- 区域标签 -->
-    <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-      <button
-        v-for="region in regionNames"
-        :key="region"
-        @click="selectedRegion = region"
-        :class="[
-          'px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all',
-          selectedRegion === region
-            ? 'bg-amber-500 text-black'
-            : 'bg-white/10 text-white/70 hover:bg-white/20'
-        ]"
-      >
-        {{ region }}
-      </button>
-    </div>
-    
-    <!-- 省份选择 -->
-    <div class="grid grid-cols-1 gap-3">
-      <button
-        v-for="province in currentRegionProvinces"
-        :key="province.id"
-        @click="selectProvince(province)"
-        :class="[
-          'w-full text-left p-4 rounded-xl border-2 transition-all',
-          selectedProvince?.id === province.id
-            ? 'border-amber-500 bg-amber-500/20'
-            : 'border-white/10 hover:border-white/30 hover:bg-white/5'
-        ]"
-      >
-        <div class="flex justify-between items-start mb-2">
-          <div class="font-semibold text-white text-lg">{{ province.name }}</div>
-          <div class="flex items-center gap-2">
-            <span
-              :class="getHeatColor(province.heat)"
-              class="px-2 py-1 rounded text-xs font-semibold"
-            >
-              热度 {{ province.heat }}
-            </span>
-          </div>
+    <!-- 左右排列布局 -->
+    <div class="grid grid-cols-12 gap-4">
+      <!-- 左侧区域选择 -->
+      <div class="col-span-4">
+        <h3 class="text-white/80 text-sm mb-3 font-semibold">选择区域</h3>
+        <div class="space-y-2">
+          <button
+            v-for="region in regionNames"
+            :key="region"
+            @click="selectedRegion = region"
+            :class="[
+              'w-full text-left px-4 py-3 rounded-lg transition-all',
+              selectedRegion === region
+                ? 'bg-amber-500 text-black font-semibold'
+                : 'bg-white/10 text-white/70 hover:bg-white/20'
+            ]"
+          >
+            {{ region }}
+          </button>
         </div>
-        <div class="grid grid-cols-3 gap-3 text-sm">
-          <div class="flex justify-between">
-            <span class="text-white/50">地价</span>
-            <span class="text-amber-400 font-semibold">¥{{ formatNumber(province.landPrice) }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-white/50">政策</span>
-            <span class="text-green-400 font-semibold">{{ province.policy }}%</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-white/50">竞争</span>
-            <span class="text-blue-400 font-semibold">{{ province.competition }}%</span>
-          </div>
+      </div>
+      
+      <!-- 右侧省份选择 -->
+      <div class="col-span-8">
+        <h3 class="text-white/80 text-sm mb-3 font-semibold">选择省份</h3>
+        <div class="space-y-3">
+          <button
+            v-for="province in currentRegionProvinces"
+            :key="province.id"
+            @click="selectProvince(province)"
+            :class="[
+              'w-full text-left p-4 rounded-xl border-2 transition-all',
+              selectedProvince?.id === province.id
+                ? 'border-amber-500 bg-amber-500/20'
+                : 'border-white/10 hover:border-white/30 hover:bg-white/5'
+            ]"
+          >
+            <div class="flex justify-between items-start mb-2">
+              <div class="font-semibold text-white text-lg">{{ province.name }}</div>
+              <div class="flex items-center gap-2">
+                <span
+                  :class="getHeatColor(province.heat)"
+                  class="px-2 py-1 rounded text-xs font-semibold"
+                >
+                  热度 {{ province.heat }}
+                </span>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 text-sm">
+              <div class="flex justify-between">
+                <span class="text-white/50">地价</span>
+                <span class="text-amber-400 font-semibold">¥{{ formatNumber(province.landPrice) }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-white/50">政策</span>
+                <span class="text-green-400 font-semibold">{{ province.policy }}%</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-white/50">竞争</span>
+                <span class="text-blue-400 font-semibold">{{ province.competition }}%</span>
+              </div>
+            </div>
+          </button>
         </div>
-      </button>
+      </div>
     </div>
     
     <!-- 选中提示 -->
