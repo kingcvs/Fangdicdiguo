@@ -1,8 +1,3 @@
-/**
- * 公司注册向导数据与配置
- */
-
-// 全国31个省份按7大区域分组
 export const provinces = {
   '华北': [
     { id: 'beijing', name: '北京市', heat: 95, landPrice: 50000, policy: 30, competition: 90 },
@@ -49,9 +44,8 @@ export const provinces = {
     { id: 'jilin', name: '吉林省', heat: 40, landPrice: 3000, policy: 75, competition: 30 },
     { id: 'heilongjiang', name: '黑龙江', heat: 35, landPrice: 2500, policy: 80, competition: 25 }
   ]
-}
+};
 
-// 企业性质选项
 export const enterpriseTypes = [
   {
     id: 'limited',
@@ -110,10 +104,9 @@ export const enterpriseTypes = [
       '股权流动性差'
     ]
   }
-]
+];
 
-// 省会城市映射
-export const capitalCities: Record<string, string> = {
+export const capitalCities = {
   beijing: '北京市',
   tianjin: '天津市',
   hebei: '石家庄市',
@@ -145,27 +138,54 @@ export const capitalCities: Record<string, string> = {
   liaoning: '沈阳市',
   jilin: '长春市',
   heilongjiang: '哈尔滨市'
+};
+
+export const fees = {
+  registration: 1000,
+  seal: 500,
+  taxEquipment: 200,
+  engineerSalary: 3000,
+  accountantSalary: 2500
+};
+
+export const banks = [
+  { id: 'icbc', name: '工商银行', rate: 0, description: '利率基准，开发贷+0.1%' },
+  { id: 'ccb', name: '建设银行', rate: -0.1, description: '利率最低，开发贷基准' },
+  { id: 'abc', name: '农业银行', rate: 0, description: '利率基准，开发贷+0.1%' },
+  { id: 'boc', name: '中国银行', rate: 0.1, description: '利率较高，开发贷+0.2%' }
+];
+
+export function generateCreditCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+  let code = '91110000MA';
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  code += '1XB';
+  return code;
 }
 
-// 生成随机已存在字号
-export const generateExistingNames(): string[] {
-  const surnames = ['华', '中', '国', '金', '银', '地', '产', '恒', '盛', '远', '宏', '伟', '星', '辰', '海', '天', '地', '和', '安', '福']
-  const middles = ['城', '兴', '旺', '隆', '发', '达', '盛', '元', '亨', '利', '丰', '泰', '锦', '绣', '鹏', '程']
-  const names: string[] = []
+export function getCapitalCity(provinceId) {
+  return capitalCities[provinceId] || '省会城市';
+}
+
+export function generateExistingNames() {
+  const surnames = ['华', '中', '国', '金', '银', '地', '产', '恒', '盛', '远', '宏', '伟', '星', '辰', '海', '天', '地', '和', '安', '福'];
+  const middles = ['城', '兴', '旺', '隆', '发', '达', '盛', '元', '亨', '利', '丰', '泰', '锦', '绣', '鹏', '程'];
+  const names = [];
   
   for (let i = 0; i < 100; i++) {
     const name = surnames[Math.floor(Math.random() * surnames.length)] + 
                  middles[Math.floor(Math.random() * middles.length)] +
-                 middles[Math.floor(Math.random() * middles.length)]
+                 middles[Math.floor(Math.random() * middles.length)];
     if (!names.includes(name)) {
-      names.push(name)
+      names.push(name);
     }
   }
   
-  return names
+  return names;
 }
 
-// 注册步骤配置
 export const registrationSteps = [
   { step: 1, title: '选择注册地区', icon: '📍' },
   { step: 2, title: '公司核名', icon: '✏️' },
@@ -178,37 +198,4 @@ export const registrationSteps = [
   { step: 9, title: '税务登记', icon: '📝' },
   { step: 10, title: '房地产开发资质', icon: '📜' },
   { step: 11, title: '公司成立', icon: '🎉' }
-]
-
-// 费用配置
-export const fees = {
-  registration: 1000,
-  seal: 500,
-  taxEquipment: 200,
-  engineerSalary: 3000,
-  accountantSalary: 2500
-}
-
-// 银行选项
-export const banks = [
-  { id: 'icbc', name: '工商银行', rate: 0, description: '利率基准，开发贷+0.1%' },
-  { id: 'ccb', name: '建设银行', rate: -0.1, description: '利率最低，开发贷基准' },
-  { id: 'abc', name: '农业银行', rate: 0, description: '利率基准，开发贷+0.1%' },
-  { id: 'boc', name: '中国银行', rate: 0.1, description: '利率较高，开发贷+0.2%' }
-]
-
-// 生成统一社会信用代码
-export function generateCreditCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
-  let code = '91110000MA'
-  for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)]
-  }
-  code += '1XB'
-  return code
-}
-
-// 生成省会城市
-export function getCapitalCity(provinceId: string): string {
-  return capitalCities[provinceId] || '省会城市'
-}
+];
