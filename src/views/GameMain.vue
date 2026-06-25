@@ -7,7 +7,7 @@
           <div class="text-lg font-bold text-white">{{ company?.name || '我的公司' }}</div>
           <div class="text-white/70 text-sm">{{ gameTime }}</div>
         </div>
-        <div class="grid grid-cols-4 gap-2 text-center">
+        <div class="grid grid-cols-5 gap-2 text-center">
           <div class="bg-white/5 rounded-lg p-2">
             <div class="text-xs text-white/50">现金</div>
             <div class="text-amber-400 font-bold text-sm">{{ formatMoney(cash || 0) }}</div>
@@ -15,6 +15,10 @@
           <div class="bg-white/5 rounded-lg p-2">
             <div class="text-xs text-white/50">总资产</div>
             <div class="text-green-400 font-bold text-sm">{{ formatMoney(totalAssets || 0) }}</div>
+          </div>
+          <div class="bg-white/5 rounded-lg p-2">
+            <div class="text-xs text-white/50">研究点</div>
+            <div class="text-cyan-400 font-bold text-sm">{{ researchPoints }}</div>
           </div>
           <div class="bg-white/5 rounded-lg p-2">
             <div class="text-xs text-white/50">资质</div>
@@ -130,6 +134,28 @@
             <div class="text-white/50 text-xs mt-2 text-right">{{ brandLevelText }}</div>
           </div>
 
+          <div class="section-title">🔬 研究点</div>
+          <div class="card mb-4">
+            <div class="flex justify-between items-center mb-3">
+              <div>
+                <div class="text-2xl font-bold text-cyan-400">{{ researchPoints }}</div>
+                <div class="text-white/50 text-xs">研究点数</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xs text-white/50">研究中城市</div>
+                <div class="font-bold text-amber-400">{{ researchingCitiesCount }}个</div>
+              </div>
+            </div>
+            <div class="flex gap-2 mt-3">
+              <button class="btn-primary flex-1 text-sm" @click="gainResearchPoints">
+                💡 获取研究点
+              </button>
+              <button class="btn-primary flex-1 text-sm" @click="goToCityResearch">
+                🏙 城市研究
+              </button>
+            </div>
+          </div>
+
           <div class="section-title">📈 宏观经济</div>
           <div class="card mb-4">
             <div class="grid grid-cols-2 gap-3">
@@ -180,24 +206,151 @@
 
           <!-- 城市研究 -->
           <div v-if="activeInvestmentTab === 0">
-            <div class="section-title">🏙 城市研究</div>
-            <div v-for="city in cities" :key="city.id" class="module-btn mb-3 cursor-pointer" @click="showToast('查看' + city.name + '详情')">
-              <div class="module-btn__left">
-                <div class="module-btn__icon">🏙️</div>
-                <div class="module-btn__content">
-                  <div class="module-btn__title">{{ city.name }}</div>
-                  <div class="module-btn__subtitle">{{ city.description }}</div>
+            <div v-if="!selectedCity">
+              <div class="section-title">🏙 城市研究</div>
+              <div class="card mb-4">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <div class="text-white/50 text-xs">可用研究点</div>
+                    <div class="text-xl font-bold text-cyan-400">{{ researchPoints }}</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-white/50 text-xs">已研究城市</div>
+                    <div class="text-xl font-bold text-green-400">{{ researchedCitiesCount }}/{{ allCities.length }}</div>
+                  </div>
                 </div>
               </div>
-              <div class="module-btn__right">
-                <div class="module-btn__badge">{{ formatMoney(city.avgPrice) }}</div>
-                <div>
-                  <div class="module-btn__progress">
-                    <div class="module-btn__progress-fill" :style="{ width: city.developmentLevel + '%' }"></div>
+              <div v-for="city in allCities" :key="city.id" class="module-btn mb-3 cursor-pointer" @click="selectCity(city.id)">
+                <div class="module-btn__left">
+                  <div class="module-btn__icon">🏙️</div>
+                  <div class="module-btn__content">
+                    <div class="module-btn__title">{{ city.name }}</div>
+                    <div class="module-btn__subtitle">{{ city.description }}</div>
                   </div>
-                  <div class="module-btn__progress-text">发展潜力 {{ city.potential }}%</div>
                 </div>
-                <div class="module-btn__arrow">→</div>
+                <div class="module-btn__right">
+                  <div class="text-right">
+                    <div class="module-btn__badge">{{ formatMoney(getCityAvgPrice(city.id)) }}</div>
+                    <div class="text-xs text-green-400 mt-1" v-if="getCityPriceBoost(city.id) > 0">
+                      +{{ getCityPriceBoost(city.id) }}% 加成
+                    </div>
+                  </div>
+                  <div>
+                    <div class="module-btn__progress">
+                      <div class="module-btn__progress-fill" :style="{ width: getCityResearchProgress(city.id) + '%' }"></div>
+                    </div>
+                    <div class="module-btn__progress-text">
+                      {{ getCityResearchStatus(city.id) }}
+                    </div>
+                  </div>
+                  <div class="module-btn__arrow">→</div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else>
+              <button class="btn-primary mb-4 text-sm" @click="selectedCity = null">
+                ← 返回城市列表
+              </button>
+              
+              <div class="card mb-4">
+                <div class="text-center mb-4">
+                  <div class="text-3xl mb-2">🏙️</div>
+                  <div class="text-2xl font-bold text-game-accent">{{ currentCity?.name }}</div>
+                  <div class="text-white/50 text-sm">{{ currentCity?.description }}</div>
+                </div>
+                <div class="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <div class="text-white/50 text-xs">基准房价</div>
+                    <div class="font-bold text-amber-400">{{ formatMoney(currentCity?.avgPrice || 0) }}</div>
+                  </div>
+                  <div>
+                    <div class="text-white/50 text-xs">研究加成</div>
+                    <div class="font-bold text-green-400">+{{ getCityPriceBoost(selectedCity) }}%</div>
+                  </div>
+                  <div>
+                    <div class="text-white/50 text-xs">有效房价</div>
+                    <div class="font-bold text-blue-400">{{ formatMoney(getEffectiveCityPrice(selectedCity)) }}</div>
+                  </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-white/10">
+                  <div class="flex flex-wrap gap-2">
+                    <span v-for="tag in currentCity?.tags" :key="tag" class="px-2 py-1 bg-white/10 rounded-full text-xs">
+                      {{ tag }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="getCityResearch(selectedCity)?.inProgressProject" class="card mb-4 border-cyan-500/30">
+                <div class="card-title flex items-center gap-2">
+                  <span class="animate-pulse">🔬</span>
+                  研究进行中
+                </div>
+                <div class="mt-3">
+                  <div class="flex justify-between mb-2">
+                    <span>{{ getInProgressProjectName(selectedCity) }}</span>
+                    <span class="text-cyan-400">{{ Math.round(getCityResearch(selectedCity)?.progress || 0) }}%</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" :style="{ width: (getCityResearch(selectedCity)?.progress || 0) + '%', background: 'linear-gradient(90deg, #06b6d4, #22d3ee)' }"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-title">📋 可研究项目</div>
+              <div v-if="getAvailableResearchProjects(selectedCity).length === 0" class="card" style="text-align: center; color: #64748b; padding: 40px;">
+                暂无可研究项目
+              </div>
+              <div v-for="project in getAvailableResearchProjects(selectedCity)" :key="project.id" class="card mb-3">
+                <div class="flex items-start gap-3">
+                  <div class="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
+                    {{ project.icon }}
+                  </div>
+                  <div class="flex-1">
+                    <div class="font-semibold">{{ project.name }}</div>
+                    <div class="text-white/50 text-sm mt-1">{{ project.description }}</div>
+                    <div class="grid grid-cols-3 gap-2 mt-3 text-xs">
+                      <div>
+                        <span class="text-white/50">费用:</span>
+                        <span class="text-amber-400">{{ formatMoney(project.cost) }}</span>
+                      </div>
+                      <div>
+                        <span class="text-white/50">研究点:</span>
+                        <span class="text-cyan-400">{{ project.researchPoints }}</span>
+                      </div>
+                      <div>
+                        <span class="text-white/50">周期:</span>
+                        <span>{{ project.duration }}月</span>
+                      </div>
+                    </div>
+                    <div class="mt-2 text-sm text-green-400">
+                      💰 售价加成: +{{ project.priceBoost }}%
+                    </div>
+                    <button 
+                      class="btn-primary btn-full mt-3 text-sm"
+                      :class="{ 'opacity-50 cursor-not-allowed': !canStartResearch(selectedCity, project.id) }"
+                      @click="handleStartResearch(selectedCity, project.id)"
+                    >
+                      开始研究
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-title">✅ 已完成研究</div>
+              <div v-if="getCompletedResearchProjects(selectedCity).length === 0" class="card" style="text-align: center; color: #64748b; padding: 30px;">
+                暂无已完成研究
+              </div>
+              <div v-for="project in getCompletedResearchProjects(selectedCity)" :key="project.id" class="card mb-2 opacity-70">
+                <div class="flex items-center gap-3">
+                  <div class="text-2xl">{{ project.icon }}</div>
+                  <div class="flex-1">
+                    <div class="font-semibold">{{ project.name }}</div>
+                    <div class="text-green-400 text-sm">+{{ project.priceBoost }}% 售价加成</div>
+                  </div>
+                  <div class="text-green-400 text-xl">✓</div>
+                </div>
               </div>
             </div>
           </div>
@@ -874,6 +1027,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/game'
+import type { City, ResearchProject } from '@/types/game'
 
 const router = useRouter()
 const gameStore = useGameStore()
@@ -883,6 +1037,7 @@ const activeInvestmentTab = ref(0)
 const activeMarketingTab = ref(0)
 const activeOperationTab = ref(0)
 const activeCapitalTab = ref(0)
+const selectedCity = ref<string | null>(null)
 
 // 第一行导航
 const firstRowTabs = [
@@ -912,6 +1067,9 @@ const cash = computed(() => gameStore.cash)
 const totalAssets = computed(() => gameStore.totalAssets)
 const landReserves = computed(() => gameStore.landReserves)
 const projects = computed(() => gameStore.projects)
+const researchPoints = computed(() => gameStore.researchPoints)
+const allCities = computed(() => gameStore.allCities)
+const allResearchProjects = computed(() => gameStore.allResearchProjects)
 const player = computed(() => gameStore.gameState?.player)
 const macroEconomy = computed(() => gameStore.gameState?.macroEconomy || {
   gdpGrowthRate: 5,
@@ -971,12 +1129,18 @@ const debtRatio = computed(() => {
   return ((company.value.totalLiabilities / company.value.totalAssets) * 100).toFixed(1)
 })
 
-const cities = [
-  { id: 'beijing', name: '北京', description: '政治文化中心，高端市场', avgPrice: 80000, developmentLevel: 85, potential: 75 },
-  { id: 'shanghai', name: '上海', description: '经济金融中心，国际化大都市', avgPrice: 78000, developmentLevel: 88, potential: 80 },
-  { id: 'guangzhou', name: '广州', description: '华南中心，商贸活跃', avgPrice: 45000, developmentLevel: 75, potential: 70 },
-  { id: 'shenzhen', name: '深圳', description: '科技创新中心，年轻活力', avgPrice: 70000, developmentLevel: 82, potential: 85 }
-]
+const researchingCitiesCount = computed(() => {
+  return company.value?.cityResearches.filter(r => r.inProgressProject).length || 0
+})
+
+const researchedCitiesCount = computed(() => {
+  return company.value?.cityResearches.filter(r => r.completedProjects.length > 0).length || 0
+})
+
+const currentCity = computed(() => {
+  if (!selectedCity.value) return null
+  return allCities.value.find((c: City) => c.id === selectedCity.value) || null
+})
 
 const competitors = [
   { name: '万科地产', stars: 5, marketShare: 15 },
@@ -1034,6 +1198,127 @@ function getStatusText(status: string): string {
     completed: '已完成'
   }
   return texts[status] || '未知'
+}
+
+function selectCity(cityId: string) {
+  selectedCity.value = cityId
+}
+
+function getCityResearch(cityId: string) {
+  return gameStore.getCityResearch(cityId)
+}
+
+function getCityPriceBoost(cityId: string): number {
+  return gameStore.getCityPriceBoost(cityId)
+}
+
+function getCityAvgPrice(cityId: string): number {
+  const city = allCities.value.find((c: City) => c.id === cityId)
+  return city?.avgPrice || 0
+}
+
+function getEffectiveCityPrice(cityId: string): number {
+  const basePrice = getCityAvgPrice(cityId)
+  const boost = getCityPriceBoost(cityId)
+  return Math.floor(basePrice * (1 + boost / 100))
+}
+
+function getCityResearchProgress(cityId: string): number {
+  const research = getCityResearch(cityId)
+  if (!research) return 0
+  if (research.inProgressProject) {
+    return research.progress
+  }
+  const completed = research.completedProjects.length
+  const total = allResearchProjects.value.length
+  return total > 0 ? (completed / total) * 100 : 0
+}
+
+function getCityResearchStatus(cityId: string): string {
+  const research = getCityResearch(cityId)
+  if (!research) return '未研究'
+  if (research.inProgressProject) {
+    return '研究中 ' + Math.round(research.progress) + '%'
+  }
+  if (research.completedProjects.length > 0) {
+    return `已完成 ${research.completedProjects.length}项`
+  }
+  return '未研究'
+}
+
+function getAvailableResearchProjects(cityId: string): ResearchProject[] {
+  return gameStore.getAvailableResearchProjects(cityId)
+}
+
+function getCompletedResearchProjects(cityId: string): ResearchProject[] {
+  const research = getCityResearch(cityId)
+  if (!research) return []
+  return allResearchProjects.value.filter((p: ResearchProject) => 
+    research.completedProjects.includes(p.id)
+  )
+}
+
+function getInProgressProjectName(cityId: string): string {
+  const research = getCityResearch(cityId)
+  if (!research?.inProgressProject) return ''
+  const project = allResearchProjects.value.find((p: ResearchProject) => p.id === research.inProgressProject)
+  return project?.name || ''
+}
+
+function canStartResearch(cityId: string, projectId: string): boolean {
+  const project = allResearchProjects.value.find((p: ResearchProject) => p.id === projectId)
+  if (!project) return false
+  if (company.value?.cash || 0 < project.cost) return false
+  if (researchPoints.value < project.researchPoints) return false
+  const research = getCityResearch(cityId)
+  if (research?.inProgressProject) return false
+  return true
+}
+
+function handleStartResearch(cityId: string, projectId: string) {
+  if (!canStartResearch(cityId, projectId)) {
+    const project = allResearchProjects.value.find((p: ResearchProject) => p.id === projectId)
+    if (!project) return
+    if ((company.value?.cash || 0) < project.cost) {
+      showToast('资金不足，无法开始研究')
+      return
+    }
+    if (researchPoints.value < project.researchPoints) {
+      showToast('研究点不足，无法开始研究')
+      return
+    }
+    return
+  }
+  const success = gameStore.startResearch(cityId, projectId)
+  if (success) {
+    showToast('研究项目已开始！')
+  } else {
+    showToast('开始研究失败')
+  }
+}
+
+function gainResearchPoints() {
+  const cost = 1000000
+  if ((company.value?.cash || 0) < cost) {
+    showToast('资金不足，无法获取研究点')
+    return
+  }
+  gameStore.addResearchPoints(20)
+  if (company.value && gameStore.gameState) {
+    gameStore.updateState({
+      company: {
+        ...company.value,
+        cash: company.value.cash - cost
+      }
+    })
+  }
+  showToast('获得20研究点！')
+}
+
+function goToCityResearch() {
+  activeTab.value = 'investment'
+  activeInvestmentTab.value = 0
+  selectedCity.value = null
 }
 
 function showToast(message: string) {

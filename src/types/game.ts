@@ -40,6 +40,8 @@ export interface Company {
   executives: Executive[]
   employees: Employee[]
   threeRedLines: ThreeRedLines
+  researchPoints: number
+  cityResearches: CityResearch[]
 }
 
 export interface Shareholder {
@@ -182,4 +184,38 @@ export interface Achievement {
   description: string
   unlocked: boolean
   unlockDate: string | null
+}
+
+export interface CityResearch {
+  cityId: string
+  completedProjects: string[]
+  inProgressProject: string | null
+  progress: number
+}
+
+export interface ResearchProject {
+  id: string
+  name: string
+  description: string
+  category: 'infrastructure' | 'policy' | 'marketing' | 'quality' | 'technology'
+  cost: number
+  researchPoints: number
+  duration: number
+  priceBoost: number
+  requirements: string[]
+  icon: string
+}
+
+export interface City {
+  id: string
+  name: string
+  description: string
+  province: string
+  avgPrice: number
+  developmentLevel: number
+  potential: number
+  population: number
+  gdp: number
+  tags: string[]
+  research: CityResearch
 }
