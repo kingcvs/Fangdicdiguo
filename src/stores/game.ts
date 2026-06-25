@@ -1,11 +1,283 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { GameState, Company, Player, Land, Project } from '@/types/game'
+import type { GameState, Company, Player, Land, Project, City, ResearchProject, CityResearch } from '@/types/game'
 
 // 从原始localStorage key读取数据
 const OLD_SAVE_KEY = 'real-estate-save'
 const SAVE_KEY_PREFIX = 'real-estate-save-'
 const AUTO_SAVE_KEY = 'real-estate-save-auto'
+
+// 城市研究项目数据
+const RESEARCH_PROJECTS: ResearchProject[] = [
+  {
+    id: 'infra_metro',
+    name: '地铁规划研究',
+    description: '研究城市地铁线路规划，提升区域交通便利性',
+    category: 'infrastructure',
+    cost: 5000000,
+    researchPoints: 100,
+    duration: 3,
+    priceBoost: 5,
+    requirements: [],
+    icon: '🚇'
+  },
+  {
+    id: 'infra_highway',
+    name: '高速路网研究',
+    description: '研究城市高速公路网络，改善区域通达性',
+    category: 'infrastructure',
+    cost: 3000000,
+    researchPoints: 60,
+    duration: 2,
+    priceBoost: 3,
+    requirements: [],
+    icon: '🛣️'
+  },
+  {
+    id: 'infra_park',
+    name: '公园绿地规划',
+    description: '研究城市公园绿地布局，提升居住环境品质',
+    category: 'infrastructure',
+    cost: 2000000,
+    researchPoints: 40,
+    duration: 1,
+    priceBoost: 2,
+    requirements: [],
+    icon: '🌳'
+  },
+  {
+    id: 'policy_talent',
+    name: '人才引进政策',
+    description: '研究人才引进政策，吸引高素质人口流入',
+    category: 'policy',
+    cost: 8000000,
+    researchPoints: 150,
+    duration: 4,
+    priceBoost: 8,
+    requirements: ['infra_metro'],
+    icon: '🎓'
+  },
+  {
+    id: 'policy_tax',
+    name: '税收优惠政策',
+    description: '研究税收优惠政策，吸引企业投资入驻',
+    category: 'policy',
+    cost: 6000000,
+    researchPoints: 120,
+    duration: 3,
+    priceBoost: 6,
+    requirements: [],
+    icon: '💰'
+  },
+  {
+    id: 'marketing_brand',
+    name: '城市品牌营销',
+    description: '研究城市品牌营销策略，提升城市知名度',
+    category: 'marketing',
+    cost: 4000000,
+    researchPoints: 80,
+    duration: 2,
+    priceBoost: 4,
+    requirements: [],
+    icon: '📢'
+  },
+  {
+    id: 'quality_school',
+    name: '学区资源整合',
+    description: '研究优质学区资源整合，提升教育配套价值',
+    category: 'quality',
+    cost: 10000000,
+    researchPoints: 200,
+    duration: 5,
+    priceBoost: 12,
+    requirements: ['policy_talent'],
+    icon: '🏫'
+  },
+  {
+    id: 'quality_hospital',
+    name: '医疗资源升级',
+    description: '研究医疗资源升级方案，提升医疗配套水平',
+    category: 'quality',
+    cost: 7000000,
+    researchPoints: 140,
+    duration: 4,
+    priceBoost: 7,
+    requirements: [],
+    icon: '🏥'
+  },
+  {
+    id: 'tech_smart',
+    name: '智慧城市建设',
+    description: '研究智慧城市建设方案，提升居住体验',
+    category: 'technology',
+    cost: 12000000,
+    researchPoints: 250,
+    duration: 6,
+    priceBoost: 15,
+    requirements: ['quality_school', 'policy_talent'],
+    icon: '🏙️'
+  },
+  {
+    id: 'tech_green',
+    name: '绿色建筑标准',
+    description: '研究绿色建筑标准，打造生态宜居城市',
+    category: 'technology',
+    cost: 5000000,
+    researchPoints: 100,
+    duration: 3,
+    priceBoost: 5,
+    requirements: ['infra_park'],
+    icon: '🌱'
+  }
+]
+
+// 城市数据
+const CITIES_DATA: City[] = [
+  {
+    id: 'beijing',
+    name: '北京',
+    description: '政治文化中心，高端市场',
+    province: '北京',
+    avgPrice: 80000,
+    developmentLevel: 85,
+    potential: 75,
+    population: 21890000,
+    gdp: 4161000000000,
+    tags: ['一线城市', '政治中心', '文化中心'],
+    research: {
+      cityId: 'beijing',
+      completedProjects: [],
+      inProgressProject: null,
+      progress: 0
+    }
+  },
+  {
+    id: 'shanghai',
+    name: '上海',
+    description: '经济金融中心，国际化大都市',
+    province: '上海',
+    avgPrice: 78000,
+    developmentLevel: 88,
+    potential: 80,
+    population: 24890000,
+    gdp: 4720000000000,
+    tags: ['一线城市', '经济中心', '国际化'],
+    research: {
+      cityId: 'shanghai',
+      completedProjects: [],
+      inProgressProject: null,
+      progress: 0
+    }
+  },
+  {
+    id: 'guangzhou',
+    name: '广州',
+    description: '华南中心，商贸活跃',
+    province: '广东',
+    avgPrice: 45000,
+    developmentLevel: 75,
+    potential: 70,
+    population: 18810000,
+    gdp: 2883900000000,
+    tags: ['一线城市', '商贸中心', '华南'],
+    research: {
+      cityId: 'guangzhou',
+      completedProjects: [],
+      inProgressProject: null,
+      progress: 0
+    }
+  },
+  {
+    id: 'shenzhen',
+    name: '深圳',
+    description: '科技创新中心，年轻活力',
+    province: '广东',
+    avgPrice: 70000,
+    developmentLevel: 82,
+    potential: 85,
+    population: 17560000,
+    gdp: 3460600000000,
+    tags: ['一线城市', '科技中心', '年轻'],
+    research: {
+      cityId: 'shenzhen',
+      completedProjects: [],
+      inProgressProject: null,
+      progress: 0
+    }
+  },
+  {
+    id: 'hangzhou',
+    name: '杭州',
+    description: '电商之都，宜居城市',
+    province: '浙江',
+    avgPrice: 38000,
+    developmentLevel: 72,
+    potential: 78,
+    population: 12370000,
+    gdp: 1875300000000,
+    tags: ['新一线', '电商', '宜居'],
+    research: {
+      cityId: 'hangzhou',
+      completedProjects: [],
+      inProgressProject: null,
+      progress: 0
+    }
+  },
+  {
+    id: 'chengdu',
+    name: '成都',
+    description: '西南中心，休闲宜居',
+    province: '四川',
+    avgPrice: 20000,
+    developmentLevel: 65,
+    potential: 72,
+    population: 21190000,
+    gdp: 2081700000000,
+    tags: ['新一线', '西南中心', '休闲'],
+    research: {
+      cityId: 'chengdu',
+      completedProjects: [],
+      inProgressProject: null,
+      progress: 0
+    }
+  },
+  {
+    id: 'wuhan',
+    name: '武汉',
+    description: '九省通衢，中部崛起',
+    province: '湖北',
+    avgPrice: 18000,
+    developmentLevel: 62,
+    potential: 68,
+    population: 13730000,
+    gdp: 1886600000000,
+    tags: ['新一线', '中部中心', '交通枢纽'],
+    research: {
+      cityId: 'wuhan',
+      completedProjects: [],
+      inProgressProject: null,
+      progress: 0
+    }
+  },
+  {
+    id: 'xian',
+    name: '西安',
+    description: '古都新韵，西部核心',
+    province: '陕西',
+    avgPrice: 15000,
+    developmentLevel: 58,
+    potential: 65,
+    population: 13160000,
+    gdp: 1148600000000,
+    tags: ['新一线', '西部中心', '历史名城'],
+    research: {
+      cityId: 'xian',
+      completedProjects: [],
+      inProgressProject: null,
+      progress: 0
+    }
+  }
+]
 
 export interface SaveSlot {
   id: string
@@ -30,6 +302,10 @@ export const useGameStore = defineStore('game', () => {
   const totalAssets = computed(() => company.value?.totalAssets ?? 0)
   const landReserves = computed(() => gameState.value?.landReserves ?? [])
   const projects = computed(() => gameState.value?.projects ?? [])
+  const researchPoints = computed(() => company.value?.researchPoints ?? 0)
+  const cityResearches = computed(() => company.value?.cityResearches ?? [])
+  const allCities = ref<City[]>(JSON.parse(JSON.stringify(CITIES_DATA)))
+  const allResearchProjects = ref<ResearchProject[]>(RESEARCH_PROJECTS)
   
   // 检查是否有旧存档
   function checkOldSave() {
@@ -117,7 +393,14 @@ export const useGameStore = defineStore('game', () => {
         assetLiabilityRatio: oldCompany.redLineStatus?.assetLiabilityRatio || 0,
         netDebtRatio: oldCompany.redLineStatus?.netDebtRatio || 0,
         cashShortTermDebtRatio: oldCompany.redLineStatus?.cashShortTermDebtRatio || 2.0
-      }
+      },
+      researchPoints: oldCompany.researchPoints || 50,
+      cityResearches: oldCompany.cityResearches || CITIES_DATA.map(city => ({
+        cityId: city.id,
+        completedProjects: [],
+        inProgressProject: null,
+        progress: 0
+      }))
     }
   }
   
@@ -233,7 +516,14 @@ export const useGameStore = defineStore('game', () => {
           assetLiabilityRatio: 0,
           netDebtRatio: 0,
           cashShortDebtRatio: 2.0
-        }
+        },
+        researchPoints: 50,
+        cityResearches: CITIES_DATA.map(city => ({
+          cityId: city.id,
+          completedProjects: [],
+          inProgressProject: null,
+          progress: 0
+        }))
       },
       player: {
         nickname: registrationData.legalRepresentative || '创业者',
@@ -414,6 +704,123 @@ export const useGameStore = defineStore('game', () => {
       saveGame('auto', '自动存档')
     }
   }
+
+  // 获取城市研究数据
+  function getCityResearch(cityId: string): CityResearch | undefined {
+    return company.value?.cityResearches.find(r => r.cityId === cityId)
+  }
+
+  // 获取城市已完成研究的总价格加成
+  function getCityPriceBoost(cityId: string): number {
+    const research = getCityResearch(cityId)
+    if (!research) return 0
+    return research.completedProjects.reduce((total, projectId) => {
+      const project = RESEARCH_PROJECTS.find(p => p.id === projectId)
+      return total + (project?.priceBoost || 0)
+    }, 0)
+  }
+
+  // 获取城市可用的研究项目
+  function getAvailableResearchProjects(cityId: string): ResearchProject[] {
+    const research = getCityResearch(cityId)
+    if (!research) return RESEARCH_PROJECTS.filter(p => p.requirements.length === 0)
+    
+    return RESEARCH_PROJECTS.filter(project => {
+      if (research.completedProjects.includes(project.id)) return false
+      if (research.inProgressProject === project.id) return false
+      return project.requirements.every(req => research.completedProjects.includes(req))
+    })
+  }
+
+  // 开始研究项目
+  function startResearch(cityId: string, projectId: string): boolean {
+    if (!company.value || !gameState.value) return false
+    
+    const project = RESEARCH_PROJECTS.find(p => p.id === projectId)
+    if (!project) return false
+    
+    const cityResearchIndex = company.value.cityResearches.findIndex(r => r.cityId === cityId)
+    if (cityResearchIndex === -1) return false
+    
+    const cityResearch = company.value.cityResearches[cityResearchIndex]
+    
+    if (cityResearch.inProgressProject) return false
+    if (cityResearch.completedProjects.includes(projectId)) return false
+    if (!project.requirements.every(req => cityResearch.completedProjects.includes(req))) return false
+    if (company.value.cash < project.cost) return false
+    if (company.value.researchPoints < project.researchPoints) return false
+    
+    const updatedCompany = { ...company.value }
+    updatedCompany.cash -= project.cost
+    updatedCompany.researchPoints -= project.researchPoints
+    updatedCompany.cityResearches = [...updatedCompany.cityResearches]
+    updatedCompany.cityResearches[cityResearchIndex] = {
+      ...cityResearch,
+      inProgressProject: projectId,
+      progress: 0
+    }
+    
+    gameState.value = {
+      ...gameState.value,
+      company: updatedCompany
+    }
+    
+    return true
+  }
+
+  // 推进研究进度（每月调用）
+  function advanceResearch(): void {
+    if (!company.value || !gameState.value) return
+    
+    const updatedCompany = { ...company.value }
+    let hasChanges = false
+    
+    updatedCompany.cityResearches = updatedCompany.cityResearches.map(cityResearch => {
+      if (!cityResearch.inProgressProject) return cityResearch
+      
+      const project = RESEARCH_PROJECTS.find(p => p.id === cityResearch.inProgressProject)
+      if (!project) return cityResearch
+      
+      const newProgress = cityResearch.progress + (100 / project.duration)
+      hasChanges = true
+      
+      if (newProgress >= 100) {
+        return {
+          ...cityResearch,
+          completedProjects: [...cityResearch.completedProjects, cityResearch.inProgressProject],
+          inProgressProject: null,
+          progress: 0
+        }
+      }
+      
+      return {
+        ...cityResearch,
+        progress: newProgress
+      }
+    })
+    
+    if (hasChanges) {
+      gameState.value = {
+        ...gameState.value,
+        company: updatedCompany
+      }
+    }
+  }
+
+  // 增加研究点
+  function addResearchPoints(amount: number): void {
+    if (!company.value || !gameState.value) return
+    
+    const updatedCompany = {
+      ...company.value,
+      researchPoints: company.value.researchPoints + amount
+    }
+    
+    gameState.value = {
+      ...gameState.value,
+      company: updatedCompany
+    }
+  }
   
   return { 
     gameState, 
@@ -426,6 +833,10 @@ export const useGameStore = defineStore('game', () => {
     totalAssets,
     landReserves,
     projects,
+    researchPoints,
+    cityResearches,
+    allCities,
+    allResearchProjects,
     createNewGame, 
     loadSave, 
     updateState,
@@ -435,6 +846,12 @@ export const useGameStore = defineStore('game', () => {
     saveGame,
     loadSaveGame,
     deleteSave,
-    autoSave
+    autoSave,
+    getCityResearch,
+    getCityPriceBoost,
+    getAvailableResearchProjects,
+    startResearch,
+    advanceResearch,
+    addResearchPoints
   }
 })
