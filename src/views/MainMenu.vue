@@ -45,7 +45,7 @@
         
         <!-- 副标题 -->
         <p class="text-white/70 text-lg md:text-xl tracking-wider">
-          2008-2028中国地产全周期模拟
+          中国房地产模拟经营
         </p>
         
         <!-- 装饰线 -->

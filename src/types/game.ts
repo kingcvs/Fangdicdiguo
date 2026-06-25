@@ -36,6 +36,7 @@ export interface Company {
   shareStructure?: Shareholder[]
   shareholders?: Shareholder[]
   qualificationLevel: 1 | 2 | 3 | 4
+  qualificationProgress?: QualificationProgress // 资质升级进度
   creditRating: 'AAA' | 'AA' | 'A' | 'B' | 'C'
   cash: number
   totalAssets: number
@@ -47,6 +48,116 @@ export interface Company {
   threeRedLines: ThreeRedLines
   researchPoints: number
   cityResearches: CityResearch[]
+  // 股票相关
+  stockInfo?: StockInfo
+  totalSoldArea?: number // 累计销售面积（用于研究点计算）
+  technicalPersonnel?: number // 技术人员数量
+  // 财务数据
+  financialStatements?: FinancialStatements
+}
+
+export interface QualificationProgress {
+  currentLevel: number
+  progress: number // 各项指标完成进度
+  requirements: {
+    registeredCapital: { current: number; required: number }
+    totalAssets: { current: number; required: number }
+    completedProjects: { current: number; required: number }
+    totalSoldArea: { current: number; required: number }
+    socialReputation: { current: number; required: number }
+    technicalPersonnel: { current: number; required: number }
+  }
+  canUpgrade: boolean
+}
+
+// 财务报表
+export interface FinancialStatements {
+  balanceSheet: BalanceSheet
+  incomeStatement: IncomeStatement
+  cashFlowStatement: CashFlowStatement
+}
+
+export interface BalanceSheet {
+  // 资产
+  currentAssets: {
+    cash: number
+    accountsReceivable: number
+    inventory: number
+    prepaidExpenses: number
+    otherCurrentAssets: number
+  }
+  fixedAssets: {
+    land: number
+    buildings: number
+    equipment: number
+    constructionInProgress: number
+    accumulatedDepreciation: number
+  }
+  intangibleAssets: {
+    landUseRights: number
+    software: number
+    goodwill: number
+  }
+  totalAssets: number
+  // 负债
+  currentLiabilities: {
+    accountsPayable: number
+    advanceReceipts: number
+    taxesPayable: number
+    shortTermLoans: number
+    otherCurrentLiabilities: number
+  }
+  longTermLiabilities: {
+    longTermLoans: number
+    bondsPayable: number
+    deferredTaxLiabilities: number
+  }
+  totalLiabilities: number
+  // 所有者权益
+  paidInCapital: number
+  capitalReserve: number
+  surplusReserve: number
+  retainedEarnings: number
+  totalEquity: number
+}
+
+export interface IncomeStatement {
+  revenue: number
+  costOfGoodsSold: number
+  grossProfit: number
+  operatingExpenses: number
+  sellingExpenses: number
+  administrativeExpenses: number
+  operatingProfit: number
+  nonOperatingIncome: number
+  nonOperatingExpenses: number
+  profitBeforeTax: number
+  incomeTax: number
+  netProfit: number
+}
+
+export interface CashFlowStatement {
+  operatingActivities: {
+    cashReceivedFromCustomers: number
+    cashPaidToSuppliers: number
+    cashPaidToEmployees: number
+    taxesPaid: number
+    netCashFromOperating: number
+  }
+  investingActivities: {
+    purchaseOfFixedAssets: number
+    purchaseOfIntangibleAssets: number
+    netCashFromInvesting: number
+  }
+  financingActivities: {
+    proceedsFromLoans: number
+    repaymentOfLoans: number
+    dividendsPaid: number
+    netCashFromFinancing: number
+  }
+  netChangeInCash: number
+  beginningCash: number
+  endingCash: number
 }
 
 export interface Shareholder {
@@ -361,4 +472,51 @@ export interface City {
   gdp: number
   tags: string[]
   research: CityResearch
+}
+
+// 资质升级要求
+export interface QualificationRequirement {
+  level: 1 | 2 | 3 | 4
+  name: string
+  registeredCapital: number // 注册资本要求
+  totalAssets: number // 净资产要求
+  completedProjects: number // 完成项目数
+  totalSoldArea: number // 累计销售面积
+  socialReputation: number // 社会知名度
+  technicalPersonnel: number // 技术人员数量
+  notes: string[]
+}
+
+// 上市要求
+export interface IPORequirement {
+  minYears: number // 成立年限要求
+  minRegisteredCapital: number // 最低注册资本
+  minTotalAssets: number // 最低总资产
+  minRevenue: number // 最低营收
+  minProfit: number // 最低利润
+  minProjects: number // 完成项目数
+  auditStatus: string // 审计状态
+  governanceStatus: string // 公司治理
+}
+
+// 股票相关
+export interface StockInfo {
+  listed: boolean
+  listingDate?: string
+  totalShares: number // 总股本
+  sharePrice: number // 股价
+  marketCap: number // 市值
+  peRatio: number // 市盈率
+  sharesInCirculation: number // 流通股
+  sharesRestricted: number // 限售股
+}
+
+export interface ShareholderOperation {
+  id: string
+  type: 'add' | 'remove' | 'transfer' | 'buyback'
+  shareholderId: string
+  sharePercentage: number
+  price?: number
+  date: string
+  notes?: string
 }

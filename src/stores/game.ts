@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { GameState, Company, Player, Land, Project, City, ResearchProject, CityResearch, MarketLand, LandMarketConfig, ProjectType, QualityLevel, ProjectTypeConfig, QualityLevelConfig, DevelopmentPlan, FiveCertificates, ProjectPhases, PhaseDetail, CertificateStatus, ProjectStatus, ConstructionPhase } from '@/types/game'
+import type { GameState, Company, Player, Land, Project, City, ResearchProject, CityResearch, MarketLand, LandMarketConfig, ProjectType, QualityLevel, ProjectTypeConfig, QualityLevelConfig, DevelopmentPlan, FiveCertificates, ProjectPhases, PhaseDetail, CertificateStatus, ProjectStatus, ConstructionPhase, QualificationRequirement, IPORequirement, StockInfo, FinancialStatements, BalanceSheet, IncomeStatement, CashFlowStatement } from '@/types/game'
 
 // 从原始localStorage key读取数据
 const OLD_SAVE_KEY = 'real-estate-save'
@@ -355,6 +355,99 @@ const CERTIFICATE_CONFIG: Record<string, { name: string; cost: number; duration:
   'constructionPermit': { name: '建设工程施工许可证', cost: 80000, duration: 1, requiredPhase: 'planning' },
   'presalePermit': { name: '商品房预售许可证', cost: 150000, duration: 2, requiredPhase: 'structure' },
   'completionAcceptance': { name: '竣工验收备案', cost: 200000, duration: 1, requiredPhase: 'completion' }
+}
+
+// 资质升级要求配置（参考真实中国房地产资质升级流程）
+const QUALIFICATION_REQUIREMENTS: QualificationRequirement[] = [
+  {
+    level: 4,
+    name: '四级资质',
+    registeredCapital: 10000000, // 1000万
+    totalAssets: 20000000, // 2000万
+    completedProjects: 1,
+    totalSoldArea: 50000, // 5万㎡
+    socialReputation: 30,
+    technicalPersonnel: 10,
+    notes: ['初始资质', '可承接5万㎡以下项目']
+  },
+  {
+    level: 3,
+    name: '三级资质',
+    registeredCapital: 50000000, // 5000万
+    totalAssets: 100000000, // 1亿
+    completedProjects: 3,
+    totalSoldArea: 200000, // 20万㎡
+    socialReputation: 50,
+    technicalPersonnel: 30,
+    notes: ['注册资本≥5000万', '净资产≥1亿', '3年以上经营经历']
+  },
+  {
+    level: 2,
+    name: '二级资质',
+    registeredCapital: 200000000, // 2亿
+    totalAssets: 400000000, // 4亿
+    completedProjects: 5,
+    totalSoldArea: 500000, // 50万㎡
+    socialReputation: 70,
+    technicalPersonnel: 50,
+    notes: ['注册资本≥2亿', '净资产≥4亿', '5年以上经营经历']
+  },
+  {
+    level: 1,
+    name: '一级资质',
+    registeredCapital: 500000000, // 5亿
+    totalAssets: 1000000000, // 10亿
+    completedProjects: 10,
+    totalSoldArea: 1000000, // 100万㎡
+    socialReputation: 90,
+    technicalPersonnel: 100,
+    notes: ['注册资本≥5亿', '净资产≥10亿', '8年以上经营经历', '连续5年无安全事故']
+  }
+]
+
+// IPO上市要求配置
+const IPO_REQUIREMENTS: IPORequirement = {
+  minYears: 3, // 成立满3年
+  minRegisteredCapital: 50000000, // 注册资本≥5000万
+  minTotalAssets: 100000000, // 总资产≥1亿
+  minRevenue: 80000000, // 近3年累计营收≥8000万
+  minProfit: 30000000, // 近3年累计利润≥3000万
+  minProjects: 3, // 完成项目≥3个
+  auditStatus: '无保留意见',
+  governanceStatus: '完善'
+}
+
+// 银行货款利率配置
+const BANK_LOAN_CONFIG = {
+  baseRate: 0.049, // 基准利率4.9%
+  termLengths: [6, 12, 24, 36, 60], // 贷款期限（月）
+  rateAdjustments: {
+    // 资质等级调整
+    qualificationLevel: {
+      1: -0.02, // 一级资质利率下调2%
+      2: -0.01, // 二级资质利率下调1%
+      3: 0,     // 三级资质不变
+      4: 0.015  // 四级资质利率上浮1.5%
+    },
+    // 信用等级调整
+    creditRating: {
+      'AAA': -0.03, // AAA利率下调3%
+      'AA': -0.02,  // AA利率下调2%
+      'A': -0.01,  // A利率下调1%
+      'B': 0,      // B不变
+      'C': 0.02    // C利率上浮2%
+    },
+    // 贷款期限调整（期限越长利率越高）
+    termLength: {
+      6: -0.005,
+      12: 0,
+      24: 0.01,
+      36: 0.02,
+      60: 0.03
+    }
+  },
+  maxLoanAmountRatio: 0.7, // 最高可贷金额为总资产的70%
+  earlyRepaymentPenalty: 0.01 // 提前还款罚息1%
 }
 
 export interface SaveSlot {
@@ -1159,19 +1252,36 @@ export const useGameStore = defineStore('game', () => {
   function calculateEstimatedRevenue(land: Land, projectType: ProjectType, qualityLevel: QualityLevel): number {
     const typeConfig = PROJECT_TYPE_CONFIGS.find(c => c.type === projectType)
     const qualityConfig = QUALITY_LEVEL_CONFIGS.find(c => c.level === qualityLevel)
-    
+
     if (!typeConfig || !qualityConfig) return 0
-    
+
     const city = CITIES_DATA.find(c => c.name === land.city)
     const basePrice = city?.avgPrice || 10000
-    
+
     const totalArea = land.area * land.floorAreaRatio
     const pricePerSqm = basePrice * typeConfig.priceMultiplier * qualityConfig.priceMultiplier
     const brandBoost = (company.value?.brand?.score || 0) / 100 * qualityConfig.brandBoost
-    
-    const revenue = totalArea * pricePerSqm * (1 + brandBoost)
-    
-    return Math.round(revenue)
+
+    // 获取宏观经济指数
+    const macroEconomy = gameState.value?.macroEconomy || {
+      gdpGrowthRate: 5,
+      interestRate: 0.05,
+      urbanizationRate: 50,
+      population: 1400000000,
+      housingPriceIndex: 1.0
+    }
+
+    // 基础收益
+    const baseRevenue = totalArea * pricePerSqm * (1 + brandBoost)
+
+    // 应用宏观经济指数调整（基于房价指数）
+    const macroAdjustedRevenue = baseRevenue * macroEconomy.housingPriceIndex
+
+    // 限制最高收益为基数的130%
+    const maxRevenue = baseRevenue * 1.3
+    const finalRevenue = Math.min(macroAdjustedRevenue, maxRevenue)
+
+    return Math.round(finalRevenue)
   }
 
   // 计算建设周期
@@ -1494,7 +1604,373 @@ export const useGameStore = defineStore('game', () => {
   function getLandById(landId: string): Land | undefined {
     return gameState.value?.landReserves.find(l => l.id === landId)
   }
-  
+
+  // ========== 研究点计算 ==========
+  // 每开发并且售卖完成10万面积增加50点研究点
+  function calculateResearchPointsFromSoldArea(): number {
+    const completedProjects = projects.value.filter(p => p.status === 'completed' || p.status === 'presale' || p.status === 'delivery')
+    const totalSoldArea = completedProjects.reduce((sum, p) => sum + (p.soldArea || 0), 0)
+    return Math.floor(totalSoldArea / 100000) * 50
+  }
+
+  // 获取当前研究点（基础50 + 销售面积奖励）
+  function getTotalResearchPoints(): number {
+    const basePoints = company.value?.researchPoints || 50
+    const soldAreaPoints = calculateResearchPointsFromSoldArea()
+    return basePoints + soldAreaPoints
+  }
+
+  // ========== 资质升级进度 ==========
+  function getQualificationProgress(): QualificationProgress | null {
+    if (!company.value) return null
+    const currentLevel = company.value.qualificationLevel || 4
+    const nextLevel = currentLevel - 1 as 1 | 2 | 3 | 4
+
+    if (nextLevel < 1) {
+      return {
+        currentLevel: 1,
+        progress: 100,
+        requirements: {
+          registeredCapital: { current: company.value.registeredCapital, required: company.value.registeredCapital },
+          totalAssets: { current: company.value.totalAssets, required: company.value.totalAssets },
+          completedProjects: { current: projects.value.filter(p => p.status === 'completed').length, required: 999 },
+          totalSoldArea: { current: company.value.totalSoldArea || 0, required: 9999999 },
+          socialReputation: { current: player.value?.socialStatus?.reputation || 0, required: 100 },
+          technicalPersonnel: { current: company.value.technicalPersonnel || 0, required: 100 }
+        },
+        canUpgrade: false
+      }
+    }
+
+    const requirements = QUALIFICATION_REQUIREMENTS.find(q => q.level === nextLevel)
+    if (!requirements) return null
+
+    const completedProjects = projects.value.filter(p => p.status === 'completed').length
+    const totalSoldArea = company.value.totalSoldArea || 0
+    const socialReputation = player.value?.socialStatus?.reputation || 0
+    const technicalPersonnel = company.value.technicalPersonnel || 0
+
+    return {
+      currentLevel,
+      progress: 0,
+      requirements: {
+        registeredCapital: { current: company.value.registeredCapital, required: requirements.registeredCapital },
+        totalAssets: { current: company.value.totalAssets, required: requirements.totalAssets },
+        completedProjects: { current: completedProjects, required: requirements.completedProjects },
+        totalSoldArea: { current: totalSoldArea, required: requirements.totalSoldArea },
+        socialReputation: { current: socialReputation, required: requirements.socialReputation },
+        technicalPersonnel: { current: technicalPersonnel, required: requirements.technicalPersonnel }
+      },
+      canUpgrade: company.value.registeredCapital >= requirements.registeredCapital &&
+        company.value.totalAssets >= requirements.totalAssets &&
+        completedProjects >= requirements.completedProjects &&
+        totalSoldArea >= requirements.totalSoldArea &&
+        socialReputation >= requirements.socialReputation &&
+        technicalPersonnel >= requirements.technicalPersonnel
+    }
+  }
+
+  // 申请资质升级
+  function applyQualificationUpgrade(): boolean {
+    const progress = getQualificationProgress()
+    if (!progress || !progress.canUpgrade || !company.value) return false
+
+    gameState.value = {
+      ...gameState.value!,
+      company: {
+        ...company.value,
+        qualificationLevel: (company.value.qualificationLevel - 1) as 1 | 2 | 3 | 4
+      }
+    }
+    return true
+  }
+
+  // ========== 银行贷款相关 ==========
+  function getLoanInterestRate(termMonths: number): number {
+    const qualification = company.value?.qualificationLevel || 4
+    const credit = company.value?.creditRating || 'C'
+    const qualAdjustment = BANK_LOAN_CONFIG.rateAdjustments.qualificationLevel[qualification] || 0
+    const creditAdjustment = BANK_LOAN_CONFIG.rateAdjustments.creditRating[credit as keyof typeof BANK_LOAN_CONFIG.rateAdjustments.creditRating] || 0
+    const termAdjustment = BANK_LOAN_CONFIG.rateAdjustments.termLength[termMonths as keyof typeof BANK_LOAN_CONFIG.rateAdjustments.termLength] || 0
+    return BANK_LOAN_CONFIG.baseRate + qualAdjustment + creditAdjustment + termAdjustment
+  }
+
+  function getMaxLoanAmount(): number {
+    return (company.value?.totalAssets || 0) * BANK_LOAN_CONFIG.maxLoanAmountRatio
+  }
+
+  // ========== IPO相关 ==========
+  function getIPORequirements() {
+    return IPO_REQUIREMENTS
+  }
+
+  function checkIPOEligibility(): { eligible: boolean; reasons: string[] } {
+    const reasons: string[] = []
+    if (!company.value) return { eligible: false, reasons: ['公司不存在'] }
+
+    const gameTime = gameState.value?.gameTime
+    const establishedDate = new Date(company.value.establishmentDate)
+    const yearsSinceEstablishment = gameTime ? (gameTime.year - establishedDate.getFullYear()) : 0
+
+    if (yearsSinceEstablishment < IPO_REQUIREMENTS.minYears) {
+      reasons.push(`成立年限不足，需满${IPO_REQUIREMENTS.minYears}年`)
+    }
+    if (company.value.registeredCapital < IPO_REQUIREMENTS.minRegisteredCapital) {
+      reasons.push(`注册资本不足，需≥${IPO_REQUIREMENTS.minRegisteredCapital / 100000000}亿`)
+    }
+    if (company.value.totalAssets < IPO_REQUIREMENTS.minTotalAssets) {
+      reasons.push(`总资产不足，需≥${IPO_REQUIREMENTS.minTotalAssets / 100000000}亿`)
+    }
+    const completedProjects = projects.value.filter(p => p.status === 'completed').length
+    if (completedProjects < IPO_REQUIREMENTS.minProjects) {
+      reasons.push(`完成项目不足，需≥${IPO_REQUIREMENTS.minProjects}个`)
+    }
+
+    return { eligible: reasons.length === 0, reasons }
+  }
+
+  // 上市
+  function listCompany(): boolean {
+    const eligibility = checkIPOEligibility()
+    if (!eligibility.eligible || !company.value) return false
+
+    const baseSharePrice = 10 // 基础股价10元
+    const totalShares = company.value.registeredCapital / 1 // 1元1股
+
+    gameState.value = {
+      ...gameState.value!,
+      company: {
+        ...company.value,
+        stockInfo: {
+          listed: true,
+          listingDate: new Date().toISOString(),
+          totalShares: totalShares,
+          sharePrice: baseSharePrice,
+          marketCap: totalShares * baseSharePrice,
+          peRatio: 15,
+          sharesInCirculation: Math.floor(totalShares * 0.75), // 75%流通股
+          sharesRestricted: Math.floor(totalShares * 0.25) // 25%限售股
+        }
+      }
+    }
+    return true
+  }
+
+  // 发行股票
+  function issueShares(percentage: number): boolean {
+    if (!company.value?.stockInfo?.listed) return false
+    const newShares = Math.floor(company.value.stockInfo.totalShares * (percentage / 100))
+    gameState.value = {
+      ...gameState.value!,
+      company: {
+        ...company.value,
+        stockInfo: {
+          ...company.value.stockInfo,
+          totalShares: company.value.stockInfo.totalShares + newShares,
+          marketCap: (company.value.stockInfo.totalShares + newShares) * company.value.stockInfo.sharePrice
+        }
+      }
+    }
+    return true
+  }
+
+  // 股票回购
+  function buybackShares(percentage: number): boolean {
+    if (!company.value?.stockInfo?.listed || company.value.cash < 0) return false
+    const sharesToBuyback = Math.floor(company.value.stockInfo.totalShares * (percentage / 100))
+    const cost = sharesToBuyback * company.value.stockInfo.sharePrice
+    if (company.value.cash < cost) return false
+
+    gameState.value = {
+      ...gameState.value!,
+      company: {
+        ...company.value,
+        cash: company.value.cash - cost,
+        stockInfo: {
+          ...company.value.stockInfo,
+          totalShares: company.value.stockInfo.totalShares - sharesToBuyback,
+          marketCap: (company.value.stockInfo.totalShares - sharesToBuyback) * company.value.stockInfo.sharePrice
+        }
+      }
+    }
+    return true
+  }
+
+  // 增发股票
+  function additionalShareOffering(percentage: number, price: number): boolean {
+    if (!company.value?.stockInfo?.listed) return false
+    const newShares = Math.floor(company.value.stockInfo.totalShares * (percentage / 100))
+    const proceeds = newShares * price
+
+    gameState.value = {
+      ...gameState.value!,
+      company: {
+        ...company.value,
+        cash: company.value.cash + proceeds,
+        stockInfo: {
+          ...company.value.stockInfo,
+          totalShares: company.value.stockInfo.totalShares + newShares,
+          sharePrice: price,
+          marketCap: (company.value.stockInfo.totalShares + newShares) * price
+        }
+      }
+    }
+    return true
+  }
+
+  // ========== 财务报表 ==========
+  function generateFinancialStatements(): FinancialStatements {
+    if (!company.value) {
+      return {
+        balanceSheet: createEmptyBalanceSheet(),
+        incomeStatement: createEmptyIncomeStatement(),
+        cashFlowStatement: createEmptyCashFlowStatement()
+      }
+    }
+
+    const completedProjects = projects.value.filter(p => p.status === 'completed')
+    const developingProjects = projects.value.filter(p => p.status !== 'completed' && p.status !== 'planning')
+    const landValue = landReserves.value.reduce((sum, l) => sum + l.currentValue, 0)
+
+    // 资产负债表
+    const balanceSheet: BalanceSheet = {
+      currentAssets: {
+        cash: company.value.cash,
+        accountsReceivable: 0,
+        inventory: developingProjects.reduce((sum, p) => sum + (p.unsoldArea * p.avgPricePerSqm), 0),
+        prepaidExpenses: 0,
+        otherCurrentAssets: 0
+      },
+      fixedAssets: {
+        land: landValue,
+        buildings: completedProjects.reduce((sum, p) => sum + p.totalArea * 5000, 0), // 假设竣工房产5000元/㎡
+        equipment: 0,
+        constructionInProgress: developingProjects.reduce((sum, p) => sum + p.totalCost, 0),
+        accumulatedDepreciation: 0
+      },
+      intangibleAssets: {
+        landUseRights: landValue * 0.1,
+        software: 0,
+        goodwill: 0
+      },
+      totalAssets: company.value.totalAssets,
+      currentLiabilities: {
+        accountsPayable: 0,
+        advanceReceipts: completedProjects.reduce((sum, p) => sum + (p.unsoldArea * p.avgPricePerSqm * 0.3), 0), // 预收款
+        taxesPayable: 0,
+        shortTermLoans: 0,
+        otherCurrentLiabilities: 0
+      },
+      longTermLiabilities: {
+        longTermLoans: 0,
+        bondsPayable: 0,
+        deferredTaxLiabilities: 0
+      },
+      totalLiabilities: company.value.totalLiabilities,
+      paidInCapital: company.value.paidInCapital,
+      capitalReserve: 0,
+      surplusReserve: company.value.totalAssets - company.value.paidInCapital - company.value.totalLiabilities,
+      retainedEarnings: company.value.monthlyProfit * 12
+    }
+
+    // 利润表
+    const incomeStatement: IncomeStatement = {
+      revenue: completedProjects.reduce((sum, p) => sum + (p.soldArea * p.avgPricePerSqm), 0),
+      costOfGoodsSold: completedProjects.reduce((sum, p) => sum + p.totalCost, 0),
+      grossProfit: completedProjects.reduce((sum, p) => sum + (p.soldArea * p.avgPricePerSqm - p.totalCost), 0),
+      operatingExpenses: 0,
+      sellingExpenses: company.value.employees.reduce((sum, e) => sum + e.salary * 12, 0) * 0.1,
+      administrativeExpenses: company.value.employees.reduce((sum, e) => sum + e.salary * 12, 0) * 0.2,
+      operatingProfit: company.value.monthlyProfit * 12,
+      nonOperatingIncome: 0,
+      nonOperatingExpenses: 0,
+      profitBeforeTax: company.value.monthlyProfit * 12,
+      incomeTax: company.value.monthlyProfit * 12 * 0.25,
+      netProfit: company.value.monthlyProfit * 12 * 0.75
+    }
+
+    // 现金流量表
+    const cashFlowStatement: CashFlowStatement = {
+      operatingActivities: {
+        cashReceivedFromCustomers: completedProjects.reduce((sum, p) => sum + (p.soldArea * p.avgPricePerSqm), 0),
+        cashPaidToSuppliers: completedProjects.reduce((sum, p) => sum + p.totalCost, 0),
+        cashPaidToEmployees: company.value.employees.reduce((sum, e) => sum + e.salary * 12, 0),
+        taxesPaid: company.value.monthlyProfit * 12 * 0.25,
+        netCashFromOperating: company.value.monthlyProfit * 12 * 0.75
+      },
+      investingActivities: {
+        purchaseOfFixedAssets: landValue * 0.5,
+        purchaseOfIntangibleAssets: 0,
+        netCashFromInvesting: -landValue * 0.5
+      },
+      financingActivities: {
+        proceedsFromLoans: 0,
+        repaymentOfLoans: 0,
+        dividendsPaid: 0,
+        netCashFromFinancing: 0
+      },
+      netChangeInCash: company.value.monthlyProfit * 12 * 0.75 - landValue * 0.5,
+      beginningCash: company.value.cash - company.value.monthlyProfit * 12 * 0.75,
+      endingCash: company.value.cash
+    }
+
+    return { balanceSheet, incomeStatement, cashFlowStatement }
+  }
+
+  function createEmptyBalanceSheet(): BalanceSheet {
+    return {
+      currentAssets: { cash: 0, accountsReceivable: 0, inventory: 0, prepaidExpenses: 0, otherCurrentAssets: 0 },
+      fixedAssets: { land: 0, buildings: 0, equipment: 0, constructionInProgress: 0, accumulatedDepreciation: 0 },
+      intangibleAssets: { landUseRights: 0, software: 0, goodwill: 0 },
+      totalAssets: 0,
+      currentLiabilities: { accountsPayable: 0, advanceReceipts: 0, taxesPayable: 0, shortTermLoans: 0, otherCurrentLiabilities: 0 },
+      longTermLiabilities: { longTermLoans: 0, bondsPayable: 0, deferredTaxLiabilities: 0 },
+      totalLiabilities: 0,
+      paidInCapital: 0, capitalReserve: 0, surplusReserve: 0, retainedEarnings: 0, totalEquity: 0
+    }
+  }
+
+  function createEmptyIncomeStatement(): IncomeStatement {
+    return {
+      revenue: 0, costOfGoodsSold: 0, grossProfit: 0, operatingExpenses: 0,
+      sellingExpenses: 0, administrativeExpenses: 0, operatingProfit: 0,
+      nonOperatingIncome: 0, nonOperatingExpenses: 0, profitBeforeTax: 0, incomeTax: 0, netProfit: 0
+    }
+  }
+
+  function createEmptyCashFlowStatement(): CashFlowStatement {
+    return {
+      operatingActivities: { cashReceivedFromCustomers: 0, cashPaidToSuppliers: 0, cashPaidToEmployees: 0, taxesPaid: 0, netCashFromOperating: 0 },
+      investingActivities: { purchaseOfFixedAssets: 0, purchaseOfIntangibleAssets: 0, netCashFromInvesting: 0 },
+      financingActivities: { proceedsFromLoans: 0, repaymentOfLoans: 0, dividendsPaid: 0, netCashFromFinancing: 0 },
+      netChangeInCash: 0, beginningCash: 0, endingCash: 0
+    }
+  }
+
+  // ========== 宏观经济 ==========
+  function getMacroEconomy() {
+    return gameState.value?.macroEconomy || {
+      gdpGrowthRate: 5,
+      interestRate: 0.05,
+      urbanizationRate: 50,
+      population: 1400000000,
+      housingPriceIndex: 1.0
+    }
+  }
+
+  // 更新宏观经济（每游戏月）
+  function advanceMacroEconomy(): void {
+    if (!gameState.value) return
+    const economy = gameState.value.macroEconomy
+    // 随机波动
+    economy.gdpGrowthRate = Math.max(2, Math.min(12, economy.gdpGrowthRate + (Math.random() - 0.5) * 0.5))
+    economy.interestRate = Math.max(0.03, Math.min(0.08, economy.interestRate + (Math.random() - 0.5) * 0.002))
+    economy.urbanizationRate = Math.min(80, economy.urbanizationRate + Math.random() * 0.1)
+    economy.housingPriceIndex = Math.max(0.5, Math.min(2.0, economy.housingPriceIndex + (Math.random() - 0.5) * 0.05))
+
+    gameState.value = { ...gameState.value, macroEconomy: { ...economy } }
+  }
+
   return { 
     gameState, 
     isLoading, 
@@ -1553,6 +2029,27 @@ export const useGameStore = defineStore('game', () => {
     advanceProjectPhase,
     advanceConstruction,
     getProjectById,
-    getLandById
+    getLandById,
+    // 研究点计算
+    calculateResearchPointsFromSoldArea,
+    getTotalResearchPoints,
+    // 资质升级
+    getQualificationProgress,
+    applyQualificationUpgrade,
+    // 银行贷款
+    getLoanInterestRate,
+    getMaxLoanAmount,
+    // IPO
+    getIPORequirements,
+    checkIPOEligibility,
+    listCompany,
+    issueShares,
+    buybackShares,
+    additionalShareOffering,
+    // 财务报表
+    generateFinancialStatements,
+    // 宏观经济
+    getMacroEconomy,
+    advanceMacroEconomy
   }
 })

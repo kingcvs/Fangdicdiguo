@@ -3,9 +3,21 @@
     <!-- 顶部状态栏 -->
     <div class="bg-game-card/90 border-b border-white/10 p-4">
       <div class="max-w-md mx-auto">
+        <!-- 日期和时间流动控制 -->
         <div class="flex justify-between items-center mb-3">
-          <div class="text-lg font-bold text-white">{{ company?.name || '我的公司' }}</div>
           <div class="text-white/70 text-sm">{{ gameTime }}</div>
+          <div class="flex items-center gap-2">
+            <span class="text-white/50 text-xs">时间流速:</span>
+            <button
+              v-for="speed in [1, 2, 3]"
+              :key="speed"
+              class="px-2 py-1 rounded text-xs font-medium transition-all"
+              :class="timeSpeed === speed ? 'bg-amber-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'"
+              @click="setTimeSpeed(speed)"
+            >
+              {{ speed }}X
+            </button>
+          </div>
         </div>
         <div class="grid grid-cols-5 gap-2 text-center">
           <div class="bg-white/5 rounded-lg p-2">
@@ -17,16 +29,16 @@
             <div class="text-green-400 font-bold text-sm">{{ formatMoney(totalAssets || 0) }}</div>
           </div>
           <div class="bg-white/5 rounded-lg p-2">
-            <div class="text-xs text-white/50">研究点</div>
-            <div class="text-cyan-400 font-bold text-sm">{{ researchPoints }}</div>
-          </div>
-          <div class="bg-white/5 rounded-lg p-2">
             <div class="text-xs text-white/50">资质</div>
             <div class="text-blue-400 font-bold text-sm">{{ qualificationLevel }}</div>
           </div>
           <div class="bg-white/5 rounded-lg p-2">
             <div class="text-xs text-white/50">信用</div>
             <div class="text-purple-400 font-bold text-sm">{{ company?.creditRating || 'C' }}</div>
+          </div>
+          <div class="bg-white/5 rounded-lg p-2">
+            <div class="text-xs text-white/50">研究点</div>
+            <div class="text-cyan-400 font-bold text-sm">{{ totalResearchPoints }}</div>
           </div>
         </div>
       </div>
@@ -63,7 +75,7 @@
           </div>
 
           <div class="section-title">💰 财务状况</div>
-          <div class="grid grid-cols-2 gap-3 mb-4">
+          <div class="grid grid-cols-3 gap-3 mb-4">
             <div class="card">
               <div class="text-white/50 text-xs">现金</div>
               <div class="text-xl font-bold text-amber-400">{{ formatMoney(cash) }}</div>
@@ -71,6 +83,10 @@
             <div class="card">
               <div class="text-white/50 text-xs">总资产</div>
               <div class="text-xl font-bold text-green-400">{{ formatMoney(totalAssets) }}</div>
+            </div>
+            <div class="card">
+              <div class="text-white/50 text-xs">研究点</div>
+              <div class="text-xl font-bold text-cyan-400">{{ totalResearchPoints }}</div>
             </div>
             <div class="card">
               <div class="text-white/50 text-xs">总负债</div>
@@ -82,20 +98,12 @@
                 {{ formatMoney(company?.monthlyProfit || 0) }}
               </div>
             </div>
-          </div>
-
-          <div class="card mb-4">
-            <div class="text-white/50 text-xs mb-2">负债率</div>
-            <div class="text-xl font-bold mb-2" :class="parseFloat(debtRatio) > 70 ? 'text-red-400' : 'text-green-400'">
-              {{ debtRatio }}%
+            <div class="card">
+              <div class="text-white/50 text-xs">负债率</div>
+              <div class="text-xl font-bold" :class="parseFloat(debtRatio) > 70 ? 'text-red-400' : 'text-green-400'">
+                {{ debtRatio }}%
+              </div>
             </div>
-            <div class="progress-bar">
-              <div class="progress-fill" :style="{ 
-                width: Math.min(100, parseFloat(debtRatio)) + '%',
-                background: parseFloat(debtRatio) > 70 ? 'linear-gradient(90deg, #ef4444, #dc2626)' : 'linear-gradient(90deg, #22c55e, #4ade80)'
-              }"></div>
-            </div>
-            <div class="text-white/50 text-xs mt-2 text-right">安全线: 70%</div>
           </div>
 
           <div class="section-title">📊 项目概览</div>
@@ -116,42 +124,23 @@
             </div>
           </div>
 
-          <div class="section-title">🌟 品牌价值</div>
+          <!-- 资质升级进度 -->
           <div class="card mb-4">
             <div class="flex justify-between items-center mb-3">
-              <div>
-                <div class="text-2xl font-bold">{{ company?.brand?.score || 0 }}</div>
-                <div class="text-white/50 text-xs">品牌价值</div>
-              </div>
-              <div class="text-right">
-                <div class="text-xs text-white/50">对售价影响</div>
-                <div class="font-bold text-green-400">+{{ Math.round((company?.brand?.score || 0) / 2) }}%</div>
+              <div class="font-semibold text-white">🏆 资质升级进度</div>
+              <div class="text-xs" :class="qualificationProgress?.canUpgrade ? 'text-green-400' : 'text-white/50'">
+                {{ qualificationLevel }} → {{ nextQualificationLevel }}
               </div>
             </div>
-            <div class="progress-bar">
-              <div class="progress-fill" :style="{ width: Math.min(100, (company?.brand?.score || 0) / 2) + '%' }"></div>
-            </div>
-            <div class="text-white/50 text-xs mt-2 text-right">{{ brandLevelText }}</div>
-          </div>
-
-          <div class="section-title">🔬 研究点</div>
-          <div class="card mb-4">
-            <div class="flex justify-between items-center mb-3">
-              <div>
-                <div class="text-2xl font-bold text-cyan-400">{{ researchPoints }}</div>
-                <div class="text-white/50 text-xs">研究点数</div>
-              </div>
-              <div class="text-right">
-                <div class="text-xs text-white/50">研究中城市</div>
-                <div class="font-bold text-amber-400">{{ researchingCitiesCount }}个</div>
+            <div class="space-y-2">
+              <div v-for="(req, key) in qualificationProgress?.requirements" :key="key" class="flex justify-between items-center text-sm">
+                <span class="text-white/70">{{ getQualificationLabel(key as string) }}</span>
+                <span class="text-white">{{ formatQualificationValue(key as string, req.current) }} / {{ formatQualificationValue(key as string, req.required) }}</span>
               </div>
             </div>
-            <div class="flex gap-2 mt-3">
-              <button class="btn-primary flex-1 text-sm" @click="gainResearchPoints">
-                💡 获取研究点
-              </button>
-              <button class="btn-primary flex-1 text-sm" @click="goToCityResearch">
-                🏙 城市研究
+            <div v-if="qualificationProgress?.canUpgrade" class="mt-3">
+              <button class="btn-primary btn-full bg-green-600 hover:bg-green-500" @click="handleQualificationUpgrade">
+                申请资质升级
               </button>
             </div>
           </div>
@@ -613,6 +602,28 @@
           <div v-else-if="activeInvestmentTab === 3">
             <div class="section-title">📈 市场趋势</div>
             <div class="card mb-3">
+              <div class="card-title">宏观经济指数</div>
+              <div class="grid grid-cols-2 gap-3 mt-4 text-sm">
+                <div>
+                  <div class="text-white/50 text-xs">GDP增速</div>
+                  <div class="font-semibold text-green-400">{{ macroEconomy.gdpGrowthRate.toFixed(1) }}%</div>
+                </div>
+                <div>
+                  <div class="text-white/50 text-xs">基准利率</div>
+                  <div class="font-semibold text-amber-400">{{ (macroEconomy.interestRate * 100).toFixed(2) }}%</div>
+                </div>
+                <div>
+                  <div class="text-white/50 text-xs">房价指数</div>
+                  <div class="font-semibold text-blue-400">{{ macroEconomy.housingPriceIndex.toFixed(2) }}</div>
+                </div>
+                <div>
+                  <div class="text-white/50 text-xs">城镇化率</div>
+                  <div class="font-semibold text-purple-400">{{ macroEconomy.urbanizationRate.toFixed(1) }}%</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mb-3">
               <div class="card-title">房地产市场指数</div>
               <div class="mt-4">
                 <div class="flex justify-between mb-2">
@@ -666,31 +677,83 @@
           <!-- 资产交易 -->
           <div v-else-if="activeInvestmentTab === 5">
             <div class="section-title">💱 资产交易</div>
-            <div class="module-btn mb-3 cursor-pointer" @click="showToast('土地交易功能开发中')">
-              <div class="module-btn__left">
-                <div class="module-btn__icon">🏗️</div>
-                <div class="module-btn__content">
-                  <div class="module-btn__title">土地资产交易</div>
-                  <div class="module-btn__subtitle">买卖土地资产，优化资产配置</div>
+
+            <!-- 市场评估 -->
+            <div class="card mb-4">
+              <div class="font-semibold mb-2">市场评估</div>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <div class="text-white/50 text-xs">市场规模</div>
+                  <div class="text-amber-400">{{ getMarketScale() }}</div>
                 </div>
-              </div>
-              <div class="module-btn__right">
-                <div class="module-btn__badge">暂无</div>
-                <div class="module-btn__arrow">→</div>
+                <div>
+                  <div class="text-white/50 text-xs">交易热度</div>
+                  <div class="text-green-400">{{ getMarketActivity() }}</div>
+                </div>
               </div>
             </div>
-            <div class="module-btn cursor-pointer" @click="showToast('股权转让功能开发中')">
-              <div class="module-btn__left">
-                <div class="module-btn__icon">📊</div>
-                <div class="module-btn__content">
-                  <div class="module-btn__title">项目股权转让</div>
-                  <div class="module-btn__subtitle">转让项目股权，获取资金回报</div>
+
+            <!-- 土地资产交易 -->
+            <div class="card mb-4">
+              <div class="font-semibold mb-3">🏗️ 土地资产交易</div>
+              <div v-if="landReserves.length > 0" class="space-y-2">
+                <div v-for="land in landReserves" :key="land.id" class="bg-white/5 rounded-lg p-3">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <div class="font-medium text-sm">{{ land.city }} - {{ land.district }}</div>
+                      <div class="text-xs text-white/50">
+                        {{ formatArea(land.area) }} | 容积率 {{ land.floorAreaRatio }}
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-amber-400 font-semibold">{{ formatMoney(land.currentValue) }}</div>
+                      <div class="text-xs text-white/50">
+                        估值: {{ formatMoney(land.currentValue / land.area) }}/㎡
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-2 text-xs text-white/50">
+                    土地状态: {{ getLandStatusText(land.status) }}
+                  </div>
                 </div>
               </div>
-              <div class="module-btn__right">
-                <div class="module-btn__badge">暂无</div>
-                <div class="module-btn__arrow">→</div>
+              <div v-else class="text-center text-white/50 py-4">
+                暂无土地资产
               </div>
+            </div>
+
+            <!-- 项目股权转让 -->
+            <div class="card mb-4">
+              <div class="font-semibold mb-3">📊 项目股权转让</div>
+              <div v-if="projects.length > 0" class="space-y-2">
+                <div v-for="project in projects.filter(p => p.status !== 'planning')" :key="project.id" class="bg-white/5 rounded-lg p-3">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <div class="font-medium text-sm">{{ project.name }}</div>
+                      <div class="text-xs text-white/50">
+                        {{ project.projectType }} | {{ formatArea(project.totalArea) }}
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-green-400 font-semibold">{{ formatMoney(project.totalCost) }}</div>
+                      <div class="text-xs text-white/50">预估价值</div>
+                    </div>
+                  </div>
+                  <div class="mt-2 flex gap-2">
+                    <button class="btn-primary flex-1 text-xs py-1" @click="handleProjectTransfer(project)">
+                      转让股权
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-center text-white/50 py-4">
+                暂无可转让项目
+              </div>
+            </div>
+
+            <!-- 交易限制提示 -->
+            <div class="text-xs text-white/50 text-center">
+              💡 交易金额将根据您的资质等级和当前市场规模进行调整
             </div>
           </div>
         </div>
@@ -1019,43 +1082,177 @@
           <!-- 银行中心 -->
           <div v-if="activeCapitalTab === 0">
             <div class="section-title">🏦 银行中心</div>
-            <div v-for="bank in banks" :key="bank.id" class="card mb-3 cursor-pointer" @click="showToast('打开' + bank.name)">
+            <div class="card mb-4">
+              <div class="text-sm text-white/50 mb-3">您的贷款利率将根据资质等级和信用等级进行调整</div>
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span class="text-white/50">资质等级:</span>
+                  <span class="text-blue-400 ml-1">{{ qualificationLevel }}</span>
+                </div>
+                <div>
+                  <span class="text-white/50">信用等级:</span>
+                  <span class="text-purple-400 ml-1">{{ company?.creditRating || 'C' }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-for="bank in banks" :key="bank.id" class="card mb-3">
               <div class="flex justify-between items-start mb-3">
                 <div>
                   <div class="text-lg font-bold">{{ bank.name }}</div>
                   <div class="text-white/50 text-xs mt-1">{{ bank.feature }}</div>
                 </div>
                 <div class="text-right">
-                  <div class="text-xl font-bold text-green-400">{{ (bank.baseRate * 100).toFixed(1) }}%</div>
-                  <div class="text-white/50 text-xs">基础利率</div>
+                  <div class="text-xl font-bold text-green-400">{{ (getActualInterestRate(bank.id) * 100).toFixed(2) }}%</div>
+                  <div class="text-white/50 text-xs">实际利率</div>
                 </div>
               </div>
-              <div class="mt-2 text-xs text-white/50">
+              <div class="mt-2 text-xs text-white/50 mb-3">
                 💡 {{ bank.description }}
+              </div>
+              <div class="grid grid-cols-3 gap-2 text-xs">
+                <div class="text-center bg-white/5 rounded p-2">
+                  <div class="text-white/50">最低贷款</div>
+                  <div class="text-amber-400 font-bold">{{ formatMoney(1000000) }}</div>
+                </div>
+                <div class="text-center bg-white/5 rounded p-2">
+                  <div class="text-white/50">最高可贷</div>
+                  <div class="text-green-400 font-bold">{{ formatMoney(maxLoanAmount) }}</div>
+                </div>
+                <div class="text-center bg-white/5 rounded p-2">
+                  <div class="text-white/50">贷款期限</div>
+                  <div class="text-blue-400 font-bold">最长60月</div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- 融资中心 -->
+          <!-- 金融中心 -->
           <div v-else-if="activeCapitalTab === 1">
-            <div class="section-title">💵 融资中心</div>
-            <div class="card">
-              <div class="flex justify-between items-center mb-4">
-                <div class="font-bold text-base">📈 股权融资</div>
-                <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-semibold">股权稀释</span>
+            <div class="section-title">💵 金融中心</div>
+
+            <!-- 上市计划 -->
+            <div class="card mb-4">
+              <div class="flex justify-between items-center mb-3">
+                <div class="font-bold text-base">📈 上市计划</div>
+                <span v-if="company?.stockInfo?.listed" class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-semibold">已上市</span>
+                <span v-else class="bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full text-xs font-semibold">未上市</span>
               </div>
-              <div class="text-white/50 text-sm">融资功能开发中...</div>
+
+              <div v-if="company?.stockInfo?.listed" class="space-y-3">
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <div class="text-white/50 text-xs">总股本</div>
+                    <div class="font-bold text-white">{{ formatNumber(company.stockInfo.totalShares) }}股</div>
+                  </div>
+                  <div>
+                    <div class="text-white/50 text-xs">股价</div>
+                    <div class="font-bold text-green-400">{{ formatMoney(company.stockInfo.sharePrice) }}元</div>
+                  </div>
+                  <div>
+                    <div class="text-white/50 text-xs">市值</div>
+                    <div class="font-bold text-amber-400">{{ formatMoney(company.stockInfo.marketCap) }}</div>
+                  </div>
+                  <div>
+                    <div class="text-white/50 text-xs">市盈率</div>
+                    <div class="font-bold text-blue-400">{{ company.stockInfo.peRatio.toFixed(1) }}</div>
+                  </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                  <button class="btn-primary flex-1 text-sm" @click="handleAdditionalIssue">增发股票</button>
+                  <button class="btn-primary flex-1 text-sm" @click="handleShareBuyback">股份回购</button>
+                </div>
+              </div>
+
+              <div v-else>
+                <div class="text-sm text-white/50 mb-3">上市要求：</div>
+                <div class="space-y-2 text-sm mb-4">
+                  <div class="flex justify-between">
+                    <span class="text-white/70">成立年限≥{{ ipoRequirements.minYears }}年</span>
+                    <span :class="checkIPOEligibility().reasons.length === 0 || !checkIPOEligibility().reasons.some(r => r.includes('成立年限')) ? 'text-green-400' : 'text-red-400'">
+                      {{ checkIPOEligibility().reasons.some(r => r.includes('成立年限')) ? '不满足' : '满足' }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-white/70">注册资本≥{{ formatMoney(ipoRequirements.minRegisteredCapital) }}</span>
+                    <span :class="(company?.registeredCapital || 0) >= ipoRequirements.minRegisteredCapital ? 'text-green-400' : 'text-red-400'">
+                      {{ (company?.registeredCapital || 0) >= ipoRequirements.minRegisteredCapital ? '满足' : '不满足' }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-white/70">总资产≥{{ formatMoney(ipoRequirements.minTotalAssets) }}</span>
+                    <span :class="(company?.totalAssets || 0) >= ipoRequirements.minTotalAssets ? 'text-green-400' : 'text-red-400'">
+                      {{ (company?.totalAssets || 0) >= ipoRequirements.minTotalAssets ? '满足' : '不满足' }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-white/70">完成项目≥{{ ipoRequirements.minProjects }}个</span>
+                    <span :class="completedProjectsCount >= ipoRequirements.minProjects ? 'text-green-400' : 'text-red-400'">
+                      {{ completedProjectsCount }} / {{ ipoRequirements.minProjects }}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  class="btn-primary btn-full"
+                  :disabled="!checkIPOEligibility().eligible"
+                  @click="handleIPO"
+                >
+                  {{ checkIPOEligibility().eligible ? '申请上市' : '条件不满足' }}
+                </button>
+                <div v-if="!checkIPOEligibility().eligible && checkIPOEligibility().reasons.length > 0" class="mt-2 text-xs text-red-400">
+                  {{ checkIPOEligibility().reasons.join('; ') }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 股东操作 -->
+          <div v-else-if="activeCapitalTab === 2">
+            <div class="section-title">👥 股东操作</div>
+            <div class="card mb-4">
+              <div class="font-bold mb-3">当前股东结构</div>
+              <div v-for="shareholder in company?.shareholders" :key="shareholder.id" class="flex justify-between items-center py-2 border-b border-white/10">
+                <div>
+                  <div class="text-sm font-semibold">{{ shareholder.name }}</div>
+                  <div class="text-xs text-white/50">{{ shareholder.isPlayer ? '创始人' : '投资者' }}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-amber-400 font-bold">{{ shareholder.sharePercentage }}%</div>
+                </div>
+              </div>
+              <div v-if="!company?.shareholders || company.shareholders.length === 0" class="text-center text-white/50 py-4">
+                暂无股东信息
+              </div>
+            </div>
+
+            <div class="card mb-4">
+              <div class="font-bold mb-3">股权管理</div>
+              <div class="space-y-2">
+                <button class="btn-primary btn-full text-sm" @click="handleAddShareholder">
+                  ➕ 增加股东
+                </button>
+                <button class="btn-primary btn-full text-sm" @click="handleTransferShares">
+                  🔄 股权转让
+                </button>
+                <button
+                  v-if="company?.stockInfo?.listed"
+                  class="btn-primary btn-full text-sm"
+                  @click="handleShareBuyback"
+                >
+                  📉 股份回购
+                </button>
+              </div>
             </div>
           </div>
 
           <!-- 三条红线 -->
-          <div v-else-if="activeCapitalTab === 2">
+          <div v-else-if="activeCapitalTab === 3">
             <div class="section-title">📊 三条红线</div>
-            <div class="card">
+            <div class="card mb-4">
+              <div class="text-xs text-white/50 mb-3">实时监测房地产企业负债情况</div>
               <div class="space-y-4">
                 <div>
                   <div class="flex justify-between mb-2">
-                    <span>剔除预收款后的资产负债率</span>
+                    <span class="text-sm">剔除预收款后的资产负债率</span>
                     <span :class="threeRedLines.assetLiabilityRatio < 0.7 ? 'text-green-400' : 'text-red-400'">
                       {{ (threeRedLines.assetLiabilityRatio * 100).toFixed(1) }}%
                     </span>
@@ -1063,10 +1260,11 @@
                   <div class="progress-bar">
                     <div class="progress-fill" :style="{ width: Math.min(100, threeRedLines.assetLiabilityRatio * 100) + '%', background: threeRedLines.assetLiabilityRatio < 0.7 ? '#22c55e' : '#ef4444' }"></div>
                   </div>
+                  <div class="text-xs text-white/50 mt-1">红线: 70%</div>
                 </div>
                 <div>
                   <div class="flex justify-between mb-2">
-                    <span>净负债率</span>
+                    <span class="text-sm">净负债率</span>
                     <span :class="threeRedLines.netDebtRatio < 1 ? 'text-green-400' : 'text-red-400'">
                       {{ (threeRedLines.netDebtRatio * 100).toFixed(1) }}%
                     </span>
@@ -1074,10 +1272,11 @@
                   <div class="progress-bar">
                     <div class="progress-fill" :style="{ width: Math.min(100, threeRedLines.netDebtRatio * 100) + '%', background: threeRedLines.netDebtRatio < 1 ? '#22c55e' : '#ef4444' }"></div>
                   </div>
+                  <div class="text-xs text-white/50 mt-1">红线: 100%</div>
                 </div>
                 <div>
                   <div class="flex justify-between mb-2">
-                    <span>现金短债比</span>
+                    <span class="text-sm">现金短债比</span>
                     <span :class="threeRedLines.cashShortDebtRatio > 1 ? 'text-green-400' : 'text-red-400'">
                       {{ threeRedLines.cashShortDebtRatio.toFixed(2) }}
                     </span>
@@ -1085,16 +1284,107 @@
                   <div class="progress-bar">
                     <div class="progress-fill" :style="{ width: Math.min(100, threeRedLines.cashShortDebtRatio * 50) + '%', background: threeRedLines.cashShortDebtRatio > 1 ? '#22c55e' : '#ef4444' }"></div>
                   </div>
+                  <div class="text-xs text-white/50 mt-1">红线: 1.0</div>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- 财务报表 -->
-          <div v-else-if="activeCapitalTab === 3">
+          <div v-else-if="activeCapitalTab === 4">
             <div class="section-title">📋 财务报表</div>
-            <div class="card">
-              <div class="text-white/50 text-sm">财务报表功能开发中...</div>
+            <div class="card mb-4">
+              <div class="font-bold mb-3">资产负债表</div>
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between font-semibold border-b border-white/10 pb-2">
+                  <span>资产</span>
+                  <span>{{ formatMoney(financialStatements.balanceSheet.totalAssets) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-white/70">货币资金</span>
+                  <span>{{ formatMoney(financialStatements.balanceSheet.currentAssets.cash) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-white/70">存货</span>
+                  <span>{{ formatMoney(financialStatements.balanceSheet.currentAssets.inventory) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-white/70">土地</span>
+                  <span>{{ formatMoney(financialStatements.balanceSheet.fixedAssets.land) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-white/70">在建工程</span>
+                  <span>{{ formatMoney(financialStatements.balanceSheet.fixedAssets.constructionInProgress) }}</span>
+                </div>
+                <div class="flex justify-between font-semibold border-t border-white/10 pt-2 mt-2">
+                  <span>负债</span>
+                  <span class="text-red-400">{{ formatMoney(financialStatements.balanceSheet.totalLiabilities) }}</span>
+                </div>
+                <div class="flex justify-between font-semibold border-t border-white/10 pt-2 mt-2">
+                  <span>所有者权益</span>
+                  <span class="text-green-400">{{ formatMoney(financialStatements.balanceSheet.totalEquity) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mb-4">
+              <div class="font-bold mb-3">利润表</div>
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-white/70">营业收入</span>
+                  <span>{{ formatMoney(financialStatements.incomeStatement.revenue) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-white/70">营业成本</span>
+                  <span class="text-red-400">{{ formatMoney(financialStatements.incomeStatement.costOfGoodsSold) }}</span>
+                </div>
+                <div class="flex justify-between font-semibold border-t border-white/10 pt-2">
+                  <span>毛利润</span>
+                  <span class="text-green-400">{{ formatMoney(financialStatements.incomeStatement.grossProfit) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-white/70">销售费用</span>
+                  <span>{{ formatMoney(financialStatements.incomeStatement.sellingExpenses) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-white/70">管理费用</span>
+                  <span>{{ formatMoney(financialStatements.incomeStatement.administrativeExpenses) }}</span>
+                </div>
+                <div class="flex justify-between font-semibold border-t border-white/10 pt-2">
+                  <span>净利润</span>
+                  <span class="text-green-400">{{ formatMoney(financialStatements.incomeStatement.netProfit) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mb-4">
+              <div class="font-bold mb-3">现金流量表</div>
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-white/70">经营活动现金流</span>
+                  <span :class="financialStatements.cashFlowStatement.operatingActivities.netCashFromOperating >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ formatMoney(financialStatements.cashFlowStatement.operatingActivities.netCashFromOperating) }}
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-white/70">投资活动现金流</span>
+                  <span :class="financialStatements.cashFlowStatement.investingActivities.netCashFromInvesting >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ formatMoney(financialStatements.cashFlowStatement.investingActivities.netCashFromInvesting) }}
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-white/70">融资活动现金流</span>
+                  <span :class="financialStatements.cashFlowStatement.financingActivities.netCashFromFinancing >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ formatMoney(financialStatements.cashFlowStatement.financingActivities.netCashFromFinancing) }}
+                  </span>
+                </div>
+                <div class="flex justify-between font-semibold border-t border-white/10 pt-2">
+                  <span>现金净增加</span>
+                  <span :class="financialStatements.cashFlowStatement.netChangeInCash >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ formatMoney(financialStatements.cashFlowStatement.netChangeInCash) }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1447,6 +1737,7 @@ const activeMarketingTab = ref(0)
 const activeOperationTab = ref(0)
 const activeCapitalTab = ref(0)
 const selectedCity = ref<string | null>(null)
+const timeSpeed = ref(1) // 时间流速：1X, 2X, 3X
 
 // 开发规划相关
 const selectedLandForDevelopment = ref<string | null>(null)
@@ -1483,7 +1774,7 @@ const secondRowTabs = [
 const investmentTabs = ['城市研究', '土地市场', '土地储备', '市场趋势', '竞争对手', '资产交易']
 const marketingTabs = ['品牌建设', '预售开盘', '营销蓄客']
 const operationTabs = ['员工管理', '招聘市场']
-const capitalTabs = ['银行中心', '融资中心', '三条红线', '财务报表']
+const capitalTabs = ['银行中心', '金融中心', '股东操作', '三条红线', '财务报表']
 
 const company = computed(() => gameStore.company)
 const cash = computed(() => gameStore.cash)
@@ -1491,6 +1782,7 @@ const totalAssets = computed(() => gameStore.totalAssets)
 const landReserves = computed(() => gameStore.landReserves)
 const projects = computed(() => gameStore.projects)
 const researchPoints = computed(() => gameStore.researchPoints)
+const totalResearchPoints = computed(() => gameStore.getTotalResearchPoints())
 const allCities = computed(() => gameStore.allCities)
 const allResearchProjects = computed(() => gameStore.allResearchProjects)
 const player = computed(() => gameStore.gameState?.player)
@@ -1508,6 +1800,8 @@ const threeRedLines = computed(() => company.value?.threeRedLines || {
   cashShortDebtRatio: 1.5
 })
 
+const qualificationProgress = computed(() => gameStore.getQualificationProgress())
+
 const housingPriceIndex = computed(() => macroEconomy.value.housingPriceIndex || 1.0)
 const marketDemand = computed(() => 75)
 const economicCycle = computed(() => '稳定期')
@@ -1523,6 +1817,150 @@ const qualificationLevel = computed(() => {
   const levels: Record<number, string> = { 1: '一级', 2: '二级', 3: '三级', 4: '四级' }
   return levels[level] || '四级'
 })
+
+const nextQualificationLevel = computed(() => {
+  const level = company.value?.qualificationLevel || 4
+  if (level <= 1) return '已满级'
+  const levels: Record<number, string> = { 1: '一级', 2: '二级', 3: '三级', 4: '四级' }
+  return levels[level - 1] || '已满级'
+})
+
+function getQualificationLabel(key: string): string {
+  const labels: Record<string, string> = {
+    registeredCapital: '注册资本',
+    totalAssets: '净资产',
+    completedProjects: '完成项目',
+    totalSoldArea: '累计销售面积',
+    socialReputation: '社会知名度',
+    technicalPersonnel: '技术人员'
+  }
+  return labels[key] || key
+}
+
+function formatQualificationValue(key: string, value: number): string {
+  if (key === 'registeredCapital' || key === 'totalAssets') {
+    return formatMoney(value)
+  }
+  if (key === 'totalSoldArea' || key === 'technicalPersonnel') {
+    return formatArea(value)
+  }
+  if (key === 'completedProjects') {
+    return value.toString()
+  }
+  return value.toString()
+}
+
+function handleQualificationUpgrade() {
+  const success = gameStore.applyQualificationUpgrade()
+  if (success) {
+    showToast('资质升级成功！')
+  } else {
+    showToast('资质升级失败，条件不满足')
+  }
+}
+
+function setTimeSpeed(speed: number) {
+  timeSpeed.value = speed
+  // 1X: 5秒=1天, 2X: 3秒=1天, 3X: 2秒=1天
+  // 实际游戏中可以用这个值来控制时间流逝速度
+}
+
+// 银行贷款相关
+const maxLoanAmount = computed(() => gameStore.getMaxLoanAmount())
+
+function getActualInterestRate(bankId: string): number {
+  // 返回基于期限的利率（默认12个月）
+  return gameStore.getLoanInterestRate(12)
+}
+
+// IPO相关
+const ipoRequirements = computed(() => gameStore.getIPORequirements())
+
+const completedProjectsCount = computed(() => {
+  return projects.value.filter(p => p.status === 'completed').length
+})
+
+const financialStatements = computed(() => gameStore.generateFinancialStatements())
+
+function checkIPOEligibility() {
+  return gameStore.checkIPOEligibility()
+}
+
+function handleIPO() {
+  const eligibility = checkIPOEligibility()
+  if (!eligibility.eligible) {
+    showToast('条件不满足：' + eligibility.reasons.join('; '))
+    return
+  }
+  const success = gameStore.listCompany()
+  if (success) {
+    showToast('恭喜！公司成功上市！')
+  } else {
+    showToast('上市失败')
+  }
+}
+
+function handleAdditionalIssue() {
+  const percentage = 10 // 假设增发10%
+  const success = gameStore.additionalShareOffering(percentage, company.value?.stockInfo?.sharePrice || 10)
+  if (success) {
+    showToast(`成功增发${percentage}%股本！`)
+  } else {
+    showToast('增发失败')
+  }
+}
+
+function handleShareBuyback() {
+  const percentage = 5 // 假设回购5%
+  const success = gameStore.buybackShares(percentage)
+  if (success) {
+    showToast(`成功回购${percentage}%股份！`)
+  } else {
+    showToast('回购失败，资金不足')
+  }
+}
+
+function handleAddShareholder() {
+  showToast('增加股东功能开发中')
+}
+
+function handleTransferShares() {
+  showToast('股权转让功能开发中')
+}
+
+function formatNumber(num: number): string {
+  return num.toLocaleString('zh-CN')
+}
+
+// 资产交易相关
+function getMarketScale(): string {
+  const totalAssetsValue = totalAssets.value
+  if (totalAssetsValue > 10000000000) return '大型市场'
+  if (totalAssetsValue > 1000000000) return '中型市场'
+  if (totalAssetsValue > 100000000) return '小型市场'
+  return '微型市场'
+}
+
+function getMarketActivity(): string {
+  const macro = macroEconomy.value
+  if (macro.housingPriceIndex > 1.3) return '活跃'
+  if (macro.housingPriceIndex > 0.8) return '平稳'
+  return '低迷'
+}
+
+function getLandStatusText(status: string): string {
+  const statusMap: Record<string, string> = {
+    'idle': '闲置',
+    'planning': '规划中',
+    'developing': '开发中',
+    'sold': '已出售'
+  }
+  return statusMap[status] || status
+}
+
+function handleProjectTransfer(project: Project) {
+  showToast(`项目转让功能开发中: ${project.name}`)
+}
 
 // 土地市场相关
 const marketLands = computed(() => gameStore.getLandMarketLands())
