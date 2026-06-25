@@ -100,6 +100,43 @@ export interface Land {
   status: 'pending' | 'developing' | 'completed' | 'self-held'
   currentValue: number
   tags: string[]
+  // 开发规划
+  developmentPlan?: DevelopmentPlan
+}
+
+// 开发规划
+export interface DevelopmentPlan {
+  projectType: ProjectType // 项目类型
+  qualityLevel: QualityLevel // 开发品味
+  projectName: string // 项目名称
+  estimatedCost: number // 预估成本
+  estimatedRevenue: number // 预估收益
+  constructionPeriod: number // 建设周期（月）
+}
+
+// 项目类型
+export type ProjectType = '住宅' | '商业' | '综合体' | '别墅' | '公寓' | '写字楼' | '购物中心' | '产业园'
+
+// 开发品味等级
+export type QualityLevel = '高端' | '中端' | '低端'
+
+// 项目类型配置
+export interface ProjectTypeConfig {
+  type: ProjectType
+  baseCostPerSqm: number // 每平米基础建设成本
+  priceMultiplier: number // 售价系数
+  constructionPeriod: number // 基础建设周期（月）
+  minArea: number // 最小面积要求
+  requirements?: string[] // 前置要求
+}
+
+// 品味配置
+export interface QualityLevelConfig {
+  level: QualityLevel
+  costMultiplier: number // 成本系数
+  priceMultiplier: number // 售价系数
+  brandBoost: number // 品牌加成
+  description: string // 描述
 }
 
 // 土地市场挂牌土地
@@ -135,15 +172,87 @@ export interface Project {
   id: string
   landId: string
   name: string
-  status: 'planning' | 'construction' | 'presale' | 'completed'
+  city: string
+  district: string
+  status: ProjectStatus
+  projectType: ProjectType
+  qualityLevel: QualityLevel
+  // 建设进度
   constructionProgress: number
-  fiveCertificates: {
-    landUsePermit: boolean
-    constructionPlanningPermit: boolean
-    constructionPermit: boolean
-    presalePermit: boolean
-    completionPermit: boolean
-  }
+  currentPhase: ConstructionPhase
+  // 五证办理状态
+  fiveCertificates: FiveCertificates
+  // 各阶段进度
+  phases: ProjectPhases
+  // 成本与收益
+  totalCost: number
+  estimatedRevenue: number
+  // 时间信息
+  startDate: string
+  estimatedCompletionDate: string
+  actualCompletionDate?: string
+  // 其他信息
+  totalArea: number // 总建筑面积
+  soldArea: number // 已售面积
+  unsoldArea: number // 未售面积
+  avgPricePerSqm: number // 平均售价
+}
+
+// 项目状态
+export type ProjectStatus = 'planning' | 'design' | 'approval' | 'construction' | 'presale' | 'delivery' | 'completed'
+
+// 施工阶段
+export type ConstructionPhase = 
+  | 'foundation' // 基础施工
+  | 'structure' // 主体结构
+  | 'enclosure' // 围护结构
+  | 'interior' // 内部装修
+  | 'equipment' // 设备安装
+  | 'landscape' // 景观绿化
+  | 'completion' // 竣工验收
+
+// 五证
+export interface FiveCertificates {
+  landUsePermit: CertificateStatus // 土地使用证
+  constructionPlanningPermit: CertificateStatus // 建设工程规划许可证
+  constructionPermit: CertificateStatus // 建设工程施工许可证
+  presalePermit: CertificateStatus // 商品房预售许可证
+  completionAcceptance: CertificateStatus // 竣工验收备案
+}
+
+// 证照状态
+export interface CertificateStatus {
+  obtained: boolean
+  obtainDate?: string
+  cost?: number
+  pending?: boolean // 正在办理中
+  progress?: number // 办理进度
+}
+
+// 项目各阶段详情
+export interface ProjectPhases {
+  // 规划阶段
+  planning: PhaseDetail
+  // 设计阶段
+  design: PhaseDetail
+  // 审批阶段
+  approval: PhaseDetail
+  // 施工阶段
+  construction: PhaseDetail
+  // 预售阶段
+  presale: PhaseDetail
+  // 交付阶段
+  delivery: PhaseDetail
+}
+
+// 阶段详情
+export interface PhaseDetail {
+  status: 'pending' | 'in_progress' | 'completed'
+  progress: number
+  startDate?: string
+  endDate?: string
+  cost?: number
+  notes?: string
 }
 
 export interface Player {

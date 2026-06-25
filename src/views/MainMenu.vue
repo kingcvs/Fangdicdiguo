@@ -142,7 +142,7 @@
       
       <!-- 版本号 -->
       <div class="absolute bottom-4 right-4 text-white/40 text-sm">
-        v3.0.0
+        v{{ currentVersion }}
       </div>
     </div>
   </div>
@@ -152,11 +152,13 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/game'
+import { getCurrentVersion } from '@/config/version'
 
 const router = useRouter()
 const gameStore = useGameStore()
 const hasSave = ref(false)
 const isLoading = ref(false)
+const currentVersion = ref(getCurrentVersion())
 
 onMounted(() => {
   checkSaveData()

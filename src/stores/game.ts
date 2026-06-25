@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { GameState, Company, Player, Land, Project, City, ResearchProject, CityResearch, MarketLand, LandMarketConfig } from '@/types/game'
+import type { GameState, Company, Player, Land, Project, City, ResearchProject, CityResearch, MarketLand, LandMarketConfig, ProjectType, QualityLevel, ProjectTypeConfig, QualityLevelConfig, DevelopmentPlan, FiveCertificates, ProjectPhases, PhaseDetail, CertificateStatus, ProjectStatus, ConstructionPhase } from '@/types/game'
 
 // 从原始localStorage key读取数据
 const OLD_SAVE_KEY = 'real-estate-save'
@@ -317,6 +317,45 @@ const LAND_USE_CONFIG: Record<LandUseType, { floorAreaRatio: [number, number]; b
 
 // 土地标签池
 const LAND_TAG_POOL = ['地铁旁', '江景房', '学区房', 'CBD核心', '新城规划', '旧改项目', 'TOD项目', '景观资源', '产业配套', '政策倾斜', '价格洼地', '升值潜力大']
+
+// 项目类型配置
+const PROJECT_TYPE_CONFIGS: ProjectTypeConfig[] = [
+  { type: '住宅', baseCostPerSqm: 3000, priceMultiplier: 1.0, constructionPeriod: 24, minArea: 10000 },
+  { type: '别墅', baseCostPerSqm: 5000, priceMultiplier: 1.5, constructionPeriod: 30, minArea: 5000 },
+  { type: '公寓', baseCostPerSqm: 2500, priceMultiplier: 0.9, constructionPeriod: 18, minArea: 8000 },
+  { type: '商业', baseCostPerSqm: 4000, priceMultiplier: 1.2, constructionPeriod: 24, minArea: 15000 },
+  { type: '写字楼', baseCostPerSqm: 4500, priceMultiplier: 1.3, constructionPeriod: 28, minArea: 20000 },
+  { type: '购物中心', baseCostPerSqm: 5000, priceMultiplier: 1.4, constructionPeriod: 32, minArea: 30000 },
+  { type: '综合体', baseCostPerSqm: 4500, priceMultiplier: 1.25, constructionPeriod: 36, minArea: 25000 },
+  { type: '产业园', baseCostPerSqm: 2000, priceMultiplier: 0.8, constructionPeriod: 20, minArea: 50000 }
+]
+
+// 品味配置
+const QUALITY_LEVEL_CONFIGS: QualityLevelConfig[] = [
+  { level: '高端', costMultiplier: 1.5, priceMultiplier: 1.8, brandBoost: 10, description: '高端品质，顶级配置，品牌溢价高' },
+  { level: '中端', costMultiplier: 1.0, priceMultiplier: 1.0, brandBoost: 5, description: '标准品质，性价比适中，市场主流' },
+  { level: '低端', costMultiplier: 0.7, priceMultiplier: 0.8, brandBoost: 0, description: '经济品质，成本控制，快速回款' }
+]
+
+// 施工阶段配置
+const CONSTRUCTION_PHASE_CONFIG: Record<ConstructionPhase, { name: string; progressRange: [number, number]; duration: number }> = {
+  'foundation': { name: '基础施工', progressRange: [0, 15], duration: 3 },
+  'structure': { name: '主体结构', progressRange: [15, 45], duration: 8 },
+  'enclosure': { name: '围护结构', progressRange: [45, 60], duration: 4 },
+  'interior': { name: '内部装修', progressRange: [60, 80], duration: 5 },
+  'equipment': { name: '设备安装', progressRange: [80, 90], duration: 2 },
+  'landscape': { name: '景观绿化', progressRange: [90, 95], duration: 1 },
+  'completion': { name: '竣工验收', progressRange: [95, 100], duration: 1 }
+}
+
+// 五证办理配置
+const CERTIFICATE_CONFIG: Record<string, { name: string; cost: number; duration: number; requiredPhase?: string }> = {
+  'landUsePermit': { name: '土地使用证', cost: 50000, duration: 1 },
+  'constructionPlanningPermit': { name: '建设工程规划许可证', cost: 100000, duration: 2 },
+  'constructionPermit': { name: '建设工程施工许可证', cost: 80000, duration: 1, requiredPhase: 'planning' },
+  'presalePermit': { name: '商品房预售许可证', cost: 150000, duration: 2, requiredPhase: 'structure' },
+  'completionAcceptance': { name: '竣工验收备案', cost: 200000, duration: 1, requiredPhase: 'completion' }
+}
 
 export interface SaveSlot {
   id: string
@@ -1076,6 +1115,385 @@ export const useGameStore = defineStore('game', () => {
     const nextRefresh = getNextRefreshTime()
     return daysBetween(gameTime, nextRefresh)
   }
+
+  // ========== 开发规划相关函数 ==========
+
+  // 获取项目类型配置
+  function getProjectTypeConfigs(): ProjectTypeConfig[] {
+    return PROJECT_TYPE_CONFIGS
+  }
+
+  // 获取品味配置
+  function getQualityLevelConfigs(): QualityLevelConfig[] {
+    return QUALITY_LEVEL_CONFIGS
+  }
+
+  // 获取施工阶段配置
+  function getConstructionPhaseConfig() {
+    return CONSTRUCTION_PHASE_CONFIG
+  }
+
+  // 获取五证配置
+  function getCertificateConfig() {
+    return CERTIFICATE_CONFIG
+  }
+
+  // 计算开发成本
+  function calculateDevelopmentCost(land: Land, projectType: ProjectType, qualityLevel: QualityLevel): number {
+    const typeConfig = PROJECT_TYPE_CONFIGS.find(c => c.type === projectType)
+    const qualityConfig = QUALITY_LEVEL_CONFIGS.find(c => c.level === qualityLevel)
+    
+    if (!typeConfig || !qualityConfig) return 0
+    
+    const totalArea = land.area * land.floorAreaRatio // 总建筑面积
+    const baseCost = totalArea * typeConfig.baseCostPerSqm
+    const qualityCost = baseCost * qualityConfig.costMultiplier
+    
+    // 加上土地成本
+    const totalCost = qualityCost + land.acquisitionPrice
+    
+    return Math.round(totalCost)
+  }
+
+  // 计算预估收益
+  function calculateEstimatedRevenue(land: Land, projectType: ProjectType, qualityLevel: QualityLevel): number {
+    const typeConfig = PROJECT_TYPE_CONFIGS.find(c => c.type === projectType)
+    const qualityConfig = QUALITY_LEVEL_CONFIGS.find(c => c.level === qualityLevel)
+    
+    if (!typeConfig || !qualityConfig) return 0
+    
+    const city = CITIES_DATA.find(c => c.name === land.city)
+    const basePrice = city?.avgPrice || 10000
+    
+    const totalArea = land.area * land.floorAreaRatio
+    const pricePerSqm = basePrice * typeConfig.priceMultiplier * qualityConfig.priceMultiplier
+    const brandBoost = (company.value?.brand?.score || 0) / 100 * qualityConfig.brandBoost
+    
+    const revenue = totalArea * pricePerSqm * (1 + brandBoost)
+    
+    return Math.round(revenue)
+  }
+
+  // 计算建设周期
+  function calculateConstructionPeriod(projectType: ProjectType, qualityLevel: QualityLevel): number {
+    const typeConfig = PROJECT_TYPE_CONFIGS.find(c => c.type === projectType)
+    const qualityConfig = QUALITY_LEVEL_CONFIGS.find(c => c.level === qualityLevel)
+    
+    if (!typeConfig || !qualityConfig) return 24
+    
+    // 高端项目周期更长
+    const periodMultiplier = qualityLevel === '高端' ? 1.3 : qualityLevel === '低端' ? 0.8 : 1.0
+    
+    return Math.round(typeConfig.constructionPeriod * periodMultiplier)
+  }
+
+  // 设置土地开发规划
+  function setLandDevelopmentPlan(landId: string, plan: DevelopmentPlan): boolean {
+    if (!gameState.value) return false
+    
+    const landIndex = gameState.value.landReserves.findIndex(l => l.id === landId)
+    if (landIndex === -1) return false
+    
+    const land = gameState.value.landReserves[landIndex]
+    
+    // 检查项目类型是否适合土地用途
+    const validTypes = getValidProjectTypes(land.landUse)
+    if (!validTypes.includes(plan.projectType)) return false
+    
+    // 检查面积是否满足要求
+    const typeConfig = PROJECT_TYPE_CONFIGS.find(c => c.type === plan.projectType)
+    if (typeConfig && land.area * land.floorAreaRatio < typeConfig.minArea) return false
+    
+    // 设置开发规划
+    gameState.value.landReserves[landIndex] = {
+      ...land,
+      developmentPlan: plan
+    }
+    
+    return true
+  }
+
+  // 获取土地可开发的项目类型
+  function getValidProjectTypes(landUse: string): ProjectType[] {
+    const typeMap: Record<string, ProjectType[]> = {
+      '住宅': ['住宅', '别墅', '公寓'],
+      '商业': ['商业', '写字楼', '购物中心'],
+      '综合体': ['综合体', '商业', '写字楼', '购物中心', '公寓'],
+      '工业': ['产业园']
+    }
+    return typeMap[landUse] || ['住宅']
+  }
+
+  // 确认开发（创建项目）
+  function confirmDevelopment(landId: string): boolean {
+    if (!gameState.value || !company.value) return false
+    
+    const landIndex = gameState.value.landReserves.findIndex(l => l.id === landId)
+    if (landIndex === -1) return false
+    
+    const land = gameState.value.landReserves[landIndex]
+    if (!land.developmentPlan) return false
+    
+    const plan = land.developmentPlan
+    const totalCost = calculateDevelopmentCost(land, plan.projectType, plan.qualityLevel)
+    
+    // 检查资金
+    if (company.value.cash < totalCost * 0.3) { // 至少需要30%启动资金
+      return false
+    }
+    
+    // 创建初始五证状态
+    const initialCertificates: FiveCertificates = {
+      landUsePermit: { obtained: false, pending: false, progress: 0 },
+      constructionPlanningPermit: { obtained: false, pending: false, progress: 0 },
+      constructionPermit: { obtained: false, pending: false, progress: 0 },
+      presalePermit: { obtained: false, pending: false, progress: 0 },
+      completionAcceptance: { obtained: false, pending: false, progress: 0 }
+    }
+    
+    // 创建初始阶段状态
+    const initialPhases: ProjectPhases = {
+      planning: { status: 'in_progress', progress: 0 },
+      design: { status: 'pending', progress: 0 },
+      approval: { status: 'pending', progress: 0 },
+      construction: { status: 'pending', progress: 0 },
+      presale: { status: 'pending', progress: 0 },
+      delivery: { status: 'pending', progress: 0 }
+    }
+    
+    // 创建项目
+    const newProject: Project = {
+      id: 'project_' + Date.now(),
+      landId: land.id,
+      name: plan.projectName,
+      city: land.city,
+      district: land.district,
+      status: 'planning',
+      projectType: plan.projectType,
+      qualityLevel: plan.qualityLevel,
+      constructionProgress: 0,
+      currentPhase: 'foundation',
+      fiveCertificates: initialCertificates,
+      phases: initialPhases,
+      totalCost: totalCost,
+      estimatedRevenue: calculateEstimatedRevenue(land, plan.projectType, plan.qualityLevel),
+      startDate: new Date().toISOString(),
+      estimatedCompletionDate: new Date(Date.now() + plan.constructionPeriod * 30 * 24 * 60 * 60 * 1000).toISOString(),
+      totalArea: land.area * land.floorAreaRatio,
+      soldArea: 0,
+      unsoldArea: land.area * land.floorAreaRatio,
+      avgPricePerSqm: Math.round(calculateEstimatedRevenue(land, plan.projectType, plan.qualityLevel) / (land.area * land.floorAreaRatio))
+    }
+    
+    // 更新土地状态
+    gameState.value.landReserves[landIndex] = {
+      ...land,
+      status: 'developing'
+    }
+    
+    // 添加项目
+    gameState.value.projects.push(newProject)
+    
+    // 扣除初始成本（规划阶段成本）
+    const planningCost = totalCost * 0.05
+    gameState.value.company = {
+      ...company.value,
+      cash: company.value.cash - planningCost
+    }
+    
+    return true
+  }
+
+  // 办理证照
+  function applyForCertificate(projectId: string, certificateType: string): boolean {
+    if (!gameState.value || !company.value) return false
+    
+    const projectIndex = gameState.value.projects.findIndex(p => p.id === projectId)
+    if (projectIndex === -1) return false
+    
+    const project = gameState.value.projects[projectIndex]
+    const certConfig = CERTIFICATE_CONFIG[certificateType]
+    
+    if (!certConfig) return false
+    
+    // 检查证照是否已获取或正在办理
+    const cert = project.fiveCertificates[certificateType as keyof FiveCertificates]
+    if (cert.obtained || cert.pending) return false
+    
+    // 检查前置阶段
+    if (certConfig.requiredPhase) {
+      const phase = project.phases[certConfig.requiredPhase as keyof ProjectPhases]
+      if (phase.status !== 'completed') return false
+    }
+    
+    // 检查资金
+    if (company.value.cash < certConfig.cost) return false
+    
+    // 开始办理证照
+    const updatedCertificates = { ...project.fiveCertificates }
+    updatedCertificates[certificateType as keyof FiveCertificates] = {
+      obtained: false,
+      pending: true,
+      progress: 0,
+      cost: certConfig.cost
+    }
+    
+    gameState.value.projects[projectIndex] = {
+      ...project,
+      fiveCertificates: updatedCertificates
+    }
+    
+    // 扣除费用
+    gameState.value.company = {
+      ...company.value,
+      cash: company.value.cash - certConfig.cost
+    }
+    
+    return true
+  }
+
+  // 推进证照办理进度
+  function advanceCertificates(): void {
+    if (!gameState.value) return
+    
+    gameState.value.projects.forEach((project, index) => {
+      const updatedCertificates = { ...project.fiveCertificates }
+      let hasChanges = false
+      
+      Object.keys(updatedCertificates).forEach(key => {
+        const cert = updatedCertificates[key as keyof FiveCertificates]
+        if (cert.pending && !cert.obtained) {
+          const certConfig = CERTIFICATE_CONFIG[key]
+          if (certConfig) {
+            const newProgress = (cert.progress || 0) + (100 / certConfig.duration)
+            hasChanges = true
+            
+            if (newProgress >= 100) {
+              updatedCertificates[key as keyof FiveCertificates] = {
+                obtained: true,
+                pending: false,
+                progress: 100,
+                obtainDate: new Date().toISOString(),
+                cost: cert.cost
+              }
+            } else {
+              updatedCertificates[key as keyof FiveCertificates] = {
+                ...cert,
+                progress: newProgress
+              }
+            }
+          }
+        }
+      })
+      
+      if (hasChanges) {
+        gameState.value.projects[index] = {
+          ...project,
+          fiveCertificates: updatedCertificates
+        }
+      }
+    })
+  }
+
+  // 推进项目阶段
+  function advanceProjectPhase(projectId: string): boolean {
+    if (!gameState.value || !company.value) return false
+    
+    const projectIndex = gameState.value.projects.findIndex(p => p.id === projectId)
+    if (projectIndex === -1) return false
+    
+    const project = gameState.value.projects[projectIndex]
+    
+    // 检查当前阶段是否完成
+    const currentPhaseDetail = project.phases[project.status as keyof ProjectPhases]
+    if (currentPhaseDetail.status !== 'completed') return false
+    
+    // 确定下一阶段
+    const phaseOrder: ProjectStatus[] = ['planning', 'design', 'approval', 'construction', 'presale', 'delivery', 'completed']
+    const currentIndex = phaseOrder.indexOf(project.status)
+    if (currentIndex === -1 || currentIndex >= phaseOrder.length - 1) return false
+    
+    const nextStatus = phaseOrder[currentIndex + 1]
+    
+    // 检查证照要求
+    if (nextStatus === 'construction') {
+      if (!project.fiveCertificates.constructionPermit.obtained) return false
+    }
+    if (nextStatus === 'presale') {
+      if (!project.fiveCertificates.presalePermit.obtained) return false
+    }
+    
+    // 更新项目状态
+    const updatedPhases = { ...project.phases }
+    updatedPhases[nextStatus as keyof ProjectPhases] = {
+      status: 'in_progress',
+      progress: 0,
+      startDate: new Date().toISOString()
+    }
+    
+    gameState.value.projects[projectIndex] = {
+      ...project,
+      status: nextStatus,
+      phases: updatedPhases
+    }
+    
+    return true
+  }
+
+  // 推进施工进度
+  function advanceConstruction(): void {
+    if (!gameState.value || !company.value) return
+    
+    gameState.value.projects.forEach((project, index) => {
+      if (project.status !== 'construction') return
+      
+      // 计算进度增量（每月推进约3-5%）
+      const progressIncrement = 3 + Math.random() * 2
+      const newProgress = Math.min(100, project.constructionProgress + progressIncrement)
+      
+      // 确定当前施工阶段
+      let currentPhase: ConstructionPhase = 'foundation'
+      for (const [phase, config] of Object.entries(CONSTRUCTION_PHASE_CONFIG)) {
+        if (newProgress >= config.progressRange[0] && newProgress < config.progressRange[1]) {
+          currentPhase = phase as ConstructionPhase
+          break
+        }
+        if (newProgress >= 95) {
+          currentPhase = 'completion'
+        }
+      }
+      
+      // 更新施工阶段进度
+      const updatedPhases = { ...project.phases }
+      updatedPhases.construction = {
+        ...updatedPhases.construction,
+        progress: newProgress,
+        status: newProgress >= 100 ? 'completed' : 'in_progress'
+      }
+      
+      gameState.value.projects[index] = {
+        ...project,
+        constructionProgress: newProgress,
+        currentPhase,
+        phases: updatedPhases
+      }
+      
+      // 施工完成后自动进入交付阶段
+      if (newProgress >= 100) {
+        advanceProjectPhase(project.id)
+      }
+    })
+  }
+
+  // 获取项目详情
+  function getProjectById(projectId: string): Project | undefined {
+    return gameState.value?.projects.find(p => p.id === projectId)
+  }
+
+  // 获取土地详情
+  function getLandById(landId: string): Land | undefined {
+    return gameState.value?.landReserves.find(l => l.id === landId)
+  }
   
   return { 
     gameState, 
@@ -1118,6 +1536,23 @@ export const useGameStore = defineStore('game', () => {
     getDaysToNextRefresh,
     getMaxLandArea,
     getQualificationPriceMultiplier,
-    getCreditDiscountRate
+    getCreditDiscountRate,
+    // 开发规划
+    getProjectTypeConfigs,
+    getQualityLevelConfigs,
+    getConstructionPhaseConfig,
+    getCertificateConfig,
+    calculateDevelopmentCost,
+    calculateEstimatedRevenue,
+    calculateConstructionPeriod,
+    setLandDevelopmentPlan,
+    getValidProjectTypes,
+    confirmDevelopment,
+    applyForCertificate,
+    advanceCertificates,
+    advanceProjectPhase,
+    advanceConstruction,
+    getProjectById,
+    getLandById
   }
 })

@@ -455,17 +455,155 @@
             <div v-if="landReserves.length === 0" class="card" style="text-align: center; color: #64748b; padding: 40px;">
               暂无土地储备
             </div>
-            <div v-else v-for="land in landReserves" :key="land.id" class="card mb-3">
-              <div class="card-title">{{ land.city }} - 地块</div>
-              <div class="card-subtitle">面积: {{ formatArea(land.area) }}㎡ | 容积率: {{ land.floorAreaRatio }}</div>
-              <div class="grid grid-cols-2 gap-2 mt-3 text-sm">
-                <div>
-                  <span class="text-white/50">获取价格:</span>
-                  <span class="font-semibold">{{ formatMoney(land.acquisitionPrice) }}</span>
+            <div v-else>
+              <!-- 土地列表 -->
+              <div v-for="land in landReserves" :key="land.id" class="card mb-3">
+                <div class="flex justify-between items-start mb-2">
+                  <div>
+                    <div class="font-semibold text-white">{{ land.city }} - {{ land.district }}</div>
+                    <div class="text-xs text-white/50 mt-1">
+                      <span class="bg-white/10 px-2 py-0.5 rounded">{{ land.landUse }}</span>
+                      <span class="ml-2">容积率 {{ land.floorAreaRatio }}</span>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-lg font-bold text-amber-400">{{ formatMoney(land.currentValue) }}</div>
+                    <div class="text-xs text-white/50">当前价值</div>
+                  </div>
                 </div>
-                <div>
-                  <span class="text-white/50">当前价值:</span>
-                  <span class="font-semibold text-green-400">{{ formatMoney(land.currentValue) }}</span>
+
+                <!-- 土地信息 -->
+                <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                  <div class="flex justify-between">
+                    <span class="text-white/50">占地面积</span>
+                    <span class="text-white">{{ formatArea(land.area) }}㎡</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-white/50">可建面积</span>
+                    <span class="text-green-400">{{ formatArea(land.area * land.floorAreaRatio) }}㎡</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-white/50">获取价格</span>
+                    <span class="text-white">{{ formatMoney(land.acquisitionPrice) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-white/50">土地状态</span>
+                    <span :class="land.status === 'pending' ? 'text-blue-400' : land.status === 'developing' ? 'text-amber-400' : 'text-green-400'">
+                      {{ land.status === 'pending' ? '待开发' : land.status === 'developing' ? '开发中' : '已完成' }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- 土地标签 -->
+                <div class="flex flex-wrap gap-1 mb-3">
+                  <span v-for="tag in land.tags" :key="tag" class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
+                    {{ tag }}
+                  </span>
+                </div>
+
+                <!-- 开发规划（仅待开发土地显示） -->
+                <div v-if="land.status === 'pending'">
+                  <button 
+                    v-if="!selectedLandForDevelopment || selectedLandForDevelopment !== land.id"
+                    class="btn-primary btn-full"
+                    @click="startDevelopmentPlanning(land)"
+                  >
+                    📋 制定开发规划
+                  </button>
+
+                  <!-- 开发规划面板 -->
+                  <div v-if="selectedLandForDevelopment === land.id" class="mt-4 pt-4 border-t border-white/10">
+                    <div class="text-sm font-semibold mb-3">开发规划设置</div>
+
+                    <!-- 项目类型选择 -->
+                    <div class="mb-3">
+                      <div class="text-xs text-white/50 mb-2">项目类型</div>
+                      <div class="grid grid-cols-2 gap-2">
+                        <button 
+                          v-for="type in getValidProjectTypes(land.landUse)" 
+                          :key="type"
+                          class="btn-primary text-sm py-2"
+                          :class="developmentForm.projectType === type ? 'bg-amber-500' : ''"
+                          @click="selectProjectType(type)"
+                        >
+                          {{ type }}
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- 开发品味选择 -->
+                    <div class="mb-3">
+                      <div class="text-xs text-white/50 mb-2">开发品味</div>
+                      <div class="grid grid-cols-3 gap-2">
+                        <button 
+                          v-for="level in ['高端', '中端', '低端']" 
+                          :key="level"
+                          class="btn-primary text-sm py-2"
+                          :class="developmentForm.qualityLevel === level ? 'bg-amber-500' : ''"
+                          @click="selectQualityLevel(level)"
+                        >
+                          {{ level }}
+                        </button>
+                      </div>
+                      <div class="text-xs text-white/50 mt-2">
+                        {{ getQualityDescription(developmentForm.qualityLevel) }}
+                      </div>
+                    </div>
+
+                    <!-- 项目名称 -->
+                    <div class="mb-3">
+                      <div class="text-xs text-white/50 mb-2">项目名称</div>
+                      <input 
+                        type="text" 
+                        class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm"
+                        placeholder="输入项目名称"
+                        v-model="developmentForm.projectName"
+                      >
+                    </div>
+
+                    <!-- 成本收益预估 -->
+                    <div class="bg-white/5 rounded-lg p-3 mb-3">
+                      <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <div class="text-white/50 text-xs">预估成本</div>
+                          <div class="text-lg font-bold text-red-400">{{ formatMoney(developmentPreview.cost) }}</div>
+                        </div>
+                        <div>
+                          <div class="text-white/50 text-xs">预估收益</div>
+                          <div class="text-lg font-bold text-green-400">{{ formatMoney(developmentPreview.revenue) }}</div>
+                        </div>
+                        <div>
+                          <div class="text-white/50 text-xs">建设周期</div>
+                          <div class="font-semibold">{{ developmentPreview.period }}月</div>
+                        </div>
+                        <div>
+                          <div class="text-white/50 text-xs">预估利润率</div>
+                          <div class="font-semibold" :class="developmentPreview.profitRate > 20 ? 'text-green-400' : 'text-amber-400'">
+                            {{ developmentPreview.profitRate.toFixed(1) }}%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="flex gap-2">
+                      <button class="btn-primary flex-1" @click="cancelDevelopmentPlanning">
+                        取消
+                      </button>
+                      <button 
+                        class="btn-primary flex-1 bg-green-600 hover:bg-green-500"
+                        :class="{ 'opacity-50 cursor-not-allowed': !canConfirmDevelopment(land) }"
+                        @click="confirmDevelopmentPlan(land)"
+                      >
+                        确认开发
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 已开发状态 -->
+                <div v-else-if="land.status === 'developing'" class="text-xs text-amber-400">
+                  🏗️ 正在开发中，请前往工程页面查看进度
                 </div>
               </div>
             </div>
@@ -563,25 +701,191 @@
           <div v-if="projects.length === 0" class="card" style="text-align: center; color: #64748b; padding: 40px;">
             暂无项目，先去拿地吧！
           </div>
-          <div v-else v-for="project in projects" :key="project.id" class="card mb-3 cursor-pointer" @click="showToast('查看' + project.name + '详情')">
-            <div class="flex justify-between items-start flex-wrap gap-3 mb-3">
-              <div>
-                <div class="text-lg font-bold flex items-center gap-2">
-                  {{ project.name }}
+          <div v-else>
+            <!-- 项目列表 -->
+            <div v-for="project in projects" :key="project.id" class="card mb-3">
+              <!-- 项目头部 -->
+              <div class="flex justify-between items-start mb-3">
+                <div>
+                  <div class="text-lg font-bold text-white">{{ project.name }}</div>
+                  <div class="text-xs text-white/50 mt-1">
+                    <span class="bg-white/10 px-2 py-0.5 rounded">{{ project.projectType }}</span>
+                    <span class="ml-2">{{ project.qualityLevel }}</span>
+                    <span class="mx-2">|</span>
+                    <span>{{ project.city }} {{ project.district }}</span>
+                  </div>
                 </div>
-                <div class="text-white/70 text-sm mt-1">
-                  {{ project.status === 'planning' ? '规划中' : project.status === 'construction' ? '施工中' : project.status === 'presale' ? '预售中' : '已完成' }}
+                <div class="text-right">
+                  <span class="status-badge" :class="getProjectStatusClass(project.status)">{{ getProjectStatusText(project.status) }}</span>
                 </div>
               </div>
-              <span class="status-badge" :class="getStatusClass(project.status)">{{ getStatusText(project.status) }}</span>
-            </div>
-            <div class="mt-3">
-              <div class="flex justify-between mb-2 text-sm">
-                <span class="text-white/50">建设进度</span>
-                <span>{{ project.constructionProgress }}%</span>
+
+              <!-- 项目基本信息 -->
+              <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                <div class="flex justify-between">
+                  <span class="text-white/50">总建筑面积</span>
+                  <span class="text-white">{{ formatArea(project.totalArea) }}㎡</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-white/50">总成本</span>
+                  <span class="text-red-400">{{ formatMoney(project.totalCost) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-white/50">预估收益</span>
+                  <span class="text-green-400">{{ formatMoney(project.estimatedRevenue) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-white/50">平均售价</span>
+                  <span class="text-amber-400">{{ formatMoney(project.avgPricePerSqm) }}/㎡</span>
+                </div>
               </div>
-              <div class="progress-bar">
-                <div class="progress-fill" :style="{ width: project.constructionProgress + '%' }"></div>
+
+              <!-- 当前阶段进度 -->
+              <div class="bg-white/5 rounded-lg p-3 mb-3">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-sm font-semibold">当前阶段</span>
+                  <span class="text-amber-400 text-sm">{{ getPhaseText(project.status) }}</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" :style="{ width: getPhaseProgress(project) + '%' }"></div>
+                </div>
+                <div class="text-xs text-white/50 mt-2 text-right">{{ getPhaseProgress(project) }}%</div>
+              </div>
+
+              <!-- 施工进度（仅施工阶段显示） -->
+              <div v-if="project.status === 'construction'" class="bg-white/5 rounded-lg p-3 mb-3">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-sm font-semibold">施工进度</span>
+                  <span class="text-blue-400 text-sm">{{ getConstructionPhaseText(project.currentPhase) }}</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" :style="{ width: project.constructionProgress + '%', background: 'linear-gradient(90deg, #3b82f6, #60a5fa)' }"></div>
+                </div>
+                <div class="text-xs text-white/50 mt-2 text-right">{{ project.constructionProgress.toFixed(1) }}%</div>
+              </div>
+
+              <!-- 五证办理状态 -->
+              <div class="mb-3">
+                <div class="text-sm font-semibold mb-2">五证办理</div>
+                <div class="grid grid-cols-5 gap-1">
+                  <div 
+                    v-for="(cert, key) in project.fiveCertificates" 
+                    :key="key"
+                    class="text-center p-2 rounded-lg"
+                    :class="cert.obtained ? 'bg-green-500/20' : cert.pending ? 'bg-amber-500/20' : 'bg-white/5'"
+                  >
+                    <div class="text-xs">{{ getCertificateName(key) }}</div>
+                    <div class="mt-1">
+                      <span v-if="cert.obtained" class="text-green-400">✓</span>
+                      <span v-else-if="cert.pending" class="text-amber-400">{{ Math.round(cert.progress || 0) }}%</span>
+                      <span v-else class="text-white/30">-</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 操作按钮 -->
+              <div class="flex gap-2">
+                <button 
+                  v-if="project.status === 'planning'"
+                  class="btn-primary flex-1 text-sm"
+                  @click="handleAdvancePhase(project.id)"
+                >
+                  进入设计阶段
+                </button>
+                <button 
+                  v-if="project.status === 'design'"
+                  class="btn-primary flex-1 text-sm"
+                  @click="handleAdvancePhase(project.id)"
+                >
+                  进入审批阶段
+                </button>
+                <button 
+                  v-if="project.status === 'approval' && !project.fiveCertificates.constructionPermit.obtained"
+                  class="btn-primary flex-1 text-sm"
+                  @click="handleApplyCertificate(project.id, 'constructionPermit')"
+                  :class="{ 'opacity-50': project.fiveCertificates.constructionPermit.pending }"
+                >
+                  办理施工许可证
+                </button>
+                <button 
+                  v-if="project.status === 'approval' && project.fiveCertificates.constructionPermit.obtained"
+                  class="btn-primary flex-1 text-sm bg-green-600"
+                  @click="handleAdvancePhase(project.id)"
+                >
+                  开始施工
+                </button>
+                <button 
+                  v-if="project.status === 'construction' && project.constructionProgress >= 50 && !project.fiveCertificates.presalePermit.obtained"
+                  class="btn-primary flex-1 text-sm"
+                  @click="handleApplyCertificate(project.id, 'presalePermit')"
+                  :class="{ 'opacity-50': project.fiveCertificates.presalePermit.pending }"
+                >
+                  办理预售许可证
+                </button>
+                <button 
+                  v-if="project.status === 'presale'"
+                  class="btn-primary flex-1 text-sm"
+                  @click="handleAdvancePhase(project.id)"
+                >
+                  进入交付阶段
+                </button>
+                <button 
+                  v-if="project.status === 'delivery'"
+                  class="btn-primary flex-1 text-sm bg-green-600"
+                  @click="handleAdvancePhase(project.id)"
+                >
+                  完成项目
+                </button>
+              </div>
+
+              <!-- 项目详情展开 -->
+              <button 
+                class="text-xs text-white/50 mt-3 w-full text-center"
+                @click="toggleProjectDetail(project.id)"
+              >
+                {{ expandedProjects.includes(project.id) ? '收起详情' : '展开详情' }}
+              </button>
+
+              <!-- 详细阶段信息 -->
+              <div v-if="expandedProjects.includes(project.id)" class="mt-3 pt-3 border-t border-white/10">
+                <div class="text-sm font-semibold mb-3">开发流程详情</div>
+                
+                <!-- 各阶段详情 -->
+                <div class="space-y-2">
+                  <div v-for="(phase, key) in project.phases" :key="key" class="flex items-center gap-3 p-2 rounded-lg bg-white/5">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center"
+                         :class="phase.status === 'completed' ? 'bg-green-500/30' : phase.status === 'in_progress' ? 'bg-amber-500/30' : 'bg-white/10'">
+                      <span v-if="phase.status === 'completed'" class="text-green-400">✓</span>
+                      <span v-else-if="phase.status === 'in_progress'" class="text-amber-400">●</span>
+                      <span v-else class="text-white/30">○</span>
+                    </div>
+                    <div class="flex-1">
+                      <div class="text-sm">{{ getPhaseName(key) }}</div>
+                      <div class="text-xs text-white/50">
+                        {{ phase.status === 'completed' ? '已完成' : phase.status === 'in_progress' ? `进行中 ${Math.round(phase.progress)}%` : '待开始' }}
+                      </div>
+                    </div>
+                    <div v-if="phase.cost" class="text-xs text-amber-400">
+                      {{ formatMoney(phase.cost) }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 销售信息 -->
+                <div v-if="project.status === 'presale' || project.status === 'delivery' || project.status === 'completed'" class="mt-3 pt-3 border-t border-white/10">
+                  <div class="text-sm font-semibold mb-2">销售情况</div>
+                  <div class="grid grid-cols-2 gap-2 text-sm">
+                    <div class="flex justify-between">
+                      <span class="text-white/50">已售面积</span>
+                      <span class="text-green-400">{{ formatArea(project.soldArea) }}㎡</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-white/50">未售面积</span>
+                      <span class="text-white">{{ formatArea(project.unsoldArea) }}㎡</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -994,6 +1298,22 @@
         <div v-else-if="activeTab === 'base'">
           <div class="section-title">🎮 游戏设置</div>
 
+          <!-- 快速存档 -->
+          <div class="card mb-4">
+            <div class="card-title mb-3">快速存档</div>
+            <div class="grid grid-cols-2 gap-2">
+              <button class="btn-primary" @click="quickSave">
+                💾 快速保存
+              </button>
+              <button class="btn-primary" @click="gameStore.autoSave">
+                🔄 自动存档
+              </button>
+            </div>
+            <div class="text-xs text-white/50 mt-2 text-center">
+              上次存档: {{ lastSaveTime }}
+            </div>
+          </div>
+
           <div class="module-btn mb-3 cursor-pointer" @click="showToast('声音设置功能开发中')">
             <div class="module-btn__left">
               <div class="module-btn__icon">🔊</div>
@@ -1029,11 +1349,12 @@
               </div>
             </div>
             <div class="module-btn__right">
+              <div class="module-btn__badge">{{ saveSlotsCount }}个</div>
               <div class="module-btn__arrow">→</div>
             </div>
           </div>
 
-          <div class="module-btn mb-3 cursor-pointer" @click="showToast('更新日志功能开发中')">
+          <div class="module-btn mb-3 cursor-pointer" @click="router.push('/changelog')">
             <div class="module-btn__left">
               <div class="module-btn__icon">📝</div>
               <div class="module-btn__content">
@@ -1042,11 +1363,12 @@
               </div>
             </div>
             <div class="module-btn__right">
+              <div class="module-btn__badge">v{{ currentVersion }}</div>
               <div class="module-btn__arrow">→</div>
             </div>
           </div>
 
-          <div class="module-btn mb-3 cursor-pointer" @click="showToast('关于游戏功能开发中')">
+          <div class="module-btn mb-3 cursor-pointer" @click="showAbout">
             <div class="module-btn__left">
               <div class="module-btn__icon">ℹ️</div>
               <div class="module-btn__content">
@@ -1059,7 +1381,7 @@
             </div>
           </div>
 
-          <div class="module-btn cursor-pointer" @click="router.push('/')">
+          <div class="module-btn cursor-pointer" @click="exitToMainMenu">
             <div class="module-btn__left">
               <div class="module-btn__icon">🏠</div>
               <div class="module-btn__content">
@@ -1113,7 +1435,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/game'
-import type { City, ResearchProject } from '@/types/game'
+import type { City, ResearchProject, Land, Project, ProjectType, QualityLevel } from '@/types/game'
+import { getCurrentVersion } from '@/config/version'
 
 const router = useRouter()
 const gameStore = useGameStore()
@@ -1124,6 +1447,20 @@ const activeMarketingTab = ref(0)
 const activeOperationTab = ref(0)
 const activeCapitalTab = ref(0)
 const selectedCity = ref<string | null>(null)
+
+// 开发规划相关
+const selectedLandForDevelopment = ref<string | null>(null)
+const developmentForm = ref({
+  projectType: '住宅' as ProjectType,
+  qualityLevel: '中端' as QualityLevel,
+  projectName: ''
+})
+const expandedProjects = ref<string[]>([])
+
+// 版本和存档相关
+const currentVersion = ref(getCurrentVersion())
+const lastSaveTime = ref('未存档')
+const saveSlotsCount = computed(() => gameStore.saveSlots.length)
 
 // 第一行导航
 const firstRowTabs = [
@@ -1445,6 +1782,245 @@ function goToCityResearch() {
   selectedCity.value = null
 }
 
+// ========== 开发规划相关函数 ==========
+
+// 开发规划预览
+const developmentPreview = computed(() => {
+  if (!selectedLandForDevelopment.value) {
+    return { cost: 0, revenue: 0, period: 0, profitRate: 0 }
+  }
+  const land = landReserves.value.find(l => l.id === selectedLandForDevelopment.value)
+  if (!land) {
+    return { cost: 0, revenue: 0, period: 0, profitRate: 0 }
+  }
+  
+  const cost = gameStore.calculateDevelopmentCost(land, developmentForm.value.projectType, developmentForm.value.qualityLevel)
+  const revenue = gameStore.calculateEstimatedRevenue(land, developmentForm.value.projectType, developmentForm.value.qualityLevel)
+  const period = gameStore.calculateConstructionPeriod(developmentForm.value.projectType, developmentForm.value.qualityLevel)
+  const profitRate = cost > 0 ? ((revenue - cost) / cost) * 100 : 0
+  
+  return { cost, revenue, period, profitRate }
+})
+
+// 开始制定开发规划
+function startDevelopmentPlanning(land: Land) {
+  selectedLandForDevelopment.value = land.id
+  developmentForm.value = {
+    projectType: gameStore.getValidProjectTypes(land.landUse)[0],
+    qualityLevel: '中端',
+    projectName: `${land.city}${land.district}项目`
+  }
+}
+
+// 取消开发规划
+function cancelDevelopmentPlanning() {
+  selectedLandForDevelopment.value = null
+}
+
+// 选择项目类型
+function selectProjectType(type: ProjectType) {
+  developmentForm.value.projectType = type
+}
+
+// 选择开发品味
+function selectQualityLevel(level: QualityLevel) {
+  developmentForm.value.qualityLevel = level
+}
+
+// 获取品味描述
+function getQualityDescription(level: QualityLevel): string {
+  const configs = gameStore.getQualityLevelConfigs()
+  const config = configs.find(c => c.level === level)
+  return config?.description || ''
+}
+
+// 获取土地可开发类型
+function getValidProjectTypes(landUse: string): ProjectType[] {
+  return gameStore.getValidProjectTypes(landUse)
+}
+
+// 检查是否可以确认开发
+function canConfirmDevelopment(land: Land): boolean {
+  if (!developmentForm.value.projectName) return false
+  const cost = developmentPreview.value.cost
+  if (cash.value < cost * 0.3) return false // 需要30%启动资金
+  return true
+}
+
+// 确认开发规划
+function confirmDevelopmentPlan(land: Land) {
+  if (!canConfirmDevelopment(land)) {
+    showToast('资金不足或信息不完整')
+    return
+  }
+  
+  const plan = {
+    projectType: developmentForm.value.projectType,
+    qualityLevel: developmentForm.value.qualityLevel,
+    projectName: developmentForm.value.projectName,
+    estimatedCost: developmentPreview.value.cost,
+    estimatedRevenue: developmentPreview.value.revenue,
+    constructionPeriod: developmentPreview.value.period
+  }
+  
+  // 设置开发规划
+  const success = gameStore.setLandDevelopmentPlan(land.id, plan)
+  if (!success) {
+    showToast('设置开发规划失败')
+    return
+  }
+  
+  // 确认开发
+  const confirmSuccess = gameStore.confirmDevelopment(land.id)
+  if (confirmSuccess) {
+    showToast(`项目"${plan.projectName}"已开始开发！`)
+    selectedLandForDevelopment.value = null
+    // 自动跳转到工程页面
+    activeTab.value = 'project'
+  } else {
+    showToast('确认开发失败，请检查资金')
+  }
+}
+
+// ========== 工程页面相关函数 ==========
+
+// 获取项目状态样式类
+function getProjectStatusClass(status: string): string {
+  const classes: Record<string, string> = {
+    planning: 'status-badge--info',
+    design: 'status-badge--info',
+    approval: 'status-badge--warning',
+    construction: 'status-badge--warning',
+    presale: 'status-badge--success',
+    delivery: 'status-badge--success',
+    completed: 'status-badge--success'
+  }
+  return classes[status] || 'status-badge--info'
+}
+
+// 获取项目状态文本
+function getProjectStatusText(status: string): string {
+  const texts: Record<string, string> = {
+    planning: '规划中',
+    design: '设计中',
+    approval: '审批中',
+    construction: '施工中',
+    presale: '预售中',
+    delivery: '交付中',
+    completed: '已完成'
+  }
+  return texts[status] || '未知'
+}
+
+// 获取阶段文本
+function getPhaseText(status: string): string {
+  const texts: Record<string, string> = {
+    planning: '规划阶段',
+    design: '设计阶段',
+    approval: '审批阶段',
+    construction: '施工阶段',
+    presale: '预售阶段',
+    delivery: '交付阶段',
+    completed: '已完成'
+  }
+  return texts[status] || '未知'
+}
+
+// 获取阶段进度
+function getPhaseProgress(project: Project): number {
+  const phase = project.phases[project.status as keyof typeof project.phases]
+  return phase?.progress || 0
+}
+
+// 获取施工阶段文本
+function getConstructionPhaseText(phase: string): string {
+  const config = gameStore.getConstructionPhaseConfig()
+  return config[phase as keyof typeof config]?.name || phase
+}
+
+// 获取证照名称
+function getCertificateName(key: string): string {
+  const names: Record<string, string> = {
+    landUsePermit: '土地证',
+    constructionPlanningPermit: '规划证',
+    constructionPermit: '施工证',
+    presalePermit: '预售证',
+    completionAcceptance: '竣工证'
+  }
+  return names[key] || key
+}
+
+// 获取阶段名称
+function getPhaseName(key: string): string {
+  const names: Record<string, string> = {
+    planning: '规划阶段',
+    design: '设计阶段',
+    approval: '审批阶段',
+    construction: '施工阶段',
+    presale: '预售阶段',
+    delivery: '交付阶段'
+  }
+  return names[key] || key
+}
+
+// 展开/收起项目详情
+function toggleProjectDetail(projectId: string) {
+  const index = expandedProjects.value.indexOf(projectId)
+  if (index === -1) {
+    expandedProjects.value.push(projectId)
+  } else {
+    expandedProjects.value.splice(index, 1)
+  }
+}
+
+// 推进项目阶段
+function handleAdvancePhase(projectId: string) {
+  const success = gameStore.advanceProjectPhase(projectId)
+  if (success) {
+    showToast('项目阶段已推进')
+  } else {
+    showToast('无法推进阶段，请完成当前阶段任务')
+  }
+}
+
+// 办理证照
+function handleApplyCertificate(projectId: string, certType: string) {
+  const success = gameStore.applyForCertificate(projectId, certType)
+  if (success) {
+    showToast('证照办理已开始')
+  } else {
+    showToast('无法办理证照，请检查条件')
+  }
+}
+
+// ========== 设置页面相关函数 ==========
+
+// 快速保存
+function quickSave() {
+  const success = gameStore.saveGame('auto')
+  if (success) {
+    lastSaveTime.value = '刚刚'
+    showToast('游戏已保存')
+    gameStore.getAllSaves()
+  } else {
+    showToast('保存失败')
+  }
+}
+
+// 显示关于信息
+function showAbout() {
+  showToast(`房地产帝国 v${currentVersion.value}\n2008-2028中国地产全周期模拟\n真实复刻中国房地产全流程`)
+}
+
+// 退出到主菜单
+function exitToMainMenu() {
+  if (confirm('确定要退出游戏吗？建议先保存游戏进度。')) {
+    gameStore.autoSave()
+    gameStore.exitGame()
+    router.push('/')
+  }
+}
+
 function showToast(message: string) {
   alert(message)
 }
@@ -1452,6 +2028,17 @@ function showToast(message: string) {
 // 组件挂载时检查土地市场是否需要刷新
 onMounted(() => {
   gameStore.checkAndRefreshLandMarket()
+  gameStore.getAllSaves()
+  // 更新上次存档时间
+  const autoSave = gameStore.saveSlots.find(s => s.id === 'auto')
+  if (autoSave) {
+    const now = new Date()
+    const diff = now.getTime() - autoSave.timestamp.getTime()
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    if (hours < 1) lastSaveTime.value = '刚刚'
+    else if (hours < 24) lastSaveTime.value = `${hours}小时前`
+    else lastSaveTime.value = `${Math.floor(hours / 24)}天前`
+  }
 })
 </script>
 
