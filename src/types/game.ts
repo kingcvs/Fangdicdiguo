@@ -14,6 +14,11 @@ export interface GameState {
   macroEconomy: MacroEconomy
   policies: Policy[]
   achievements: Achievement[]
+  // 土地市场
+  landMarket: {
+    lands: MarketLand[]
+    lastRefreshTime: { year: number; month: number; day: number }
+  }
 }
 
 export interface Company {
@@ -95,6 +100,35 @@ export interface Land {
   status: 'pending' | 'developing' | 'completed' | 'self-held'
   currentValue: number
   tags: string[]
+}
+
+// 土地市场挂牌土地
+export interface MarketLand {
+  id: string
+  province: string
+  city: string
+  district: string
+  area: number
+  floorAreaRatio: number
+  buildingDensity: number
+  greeningRate: number
+  landUse: '住宅' | '商业' | '综合体' | '工业'
+  useYears: number
+  basePrice: number
+  currentPrice: number
+  pricePerSquare: number
+  discountRate: number
+  tags: string[]
+  expireDate: { year: number; month: number; day: number }
+}
+
+// 土地市场规模配置
+export interface LandMarketConfig {
+  maxLandCount: number
+  refreshIntervalDays: number
+  priceMultiplierByQualification: Record<number, number>
+  maxAreaByQualification: Record<number, number>
+  discountRateByCredit: Record<string, number>
 }
 
 export interface Project {

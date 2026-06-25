@@ -358,8 +358,94 @@
           <!-- 土地市场 -->
           <div v-else-if="activeInvestmentTab === 1">
             <div class="section-title">📍 土地市场</div>
-            <div class="card" style="text-align: center; color: #64748b; padding: 40px;">
+
+            <!-- 市场状态栏 -->
+            <div class="card mb-4">
+              <div class="flex justify-between items-center text-sm">
+                <div>
+                  <span class="text-white/50">您的资质:</span>
+                  <span class="text-blue-400 font-semibold ml-1">{{ qualificationLevel }}</span>
+                  <span class="text-white/30 mx-1">|</span>
+                  <span class="text-purple-400 font-semibold">{{ company?.creditRating || 'C' }}</span>
+                </div>
+                <div class="text-amber-400">
+                  可开发面积: <span class="font-semibold">{{ formatLandArea(maxLandArea) }}</span>
+                </div>
+              </div>
+              <div class="flex justify-between items-center text-sm mt-2">
+                <div class="text-white/50">
+                  下次刷新: <span class="text-amber-400">{{ daysToNextRefresh }}天后</span>
+                </div>
+                <button class="btn-primary text-xs px-3 py-1" @click="handleRefreshMarket">
+                  立即刷新
+                </button>
+              </div>
+            </div>
+
+            <!-- 土地列表 -->
+            <div v-if="marketLands.length === 0" class="card" style="text-align: center; color: #64748b; padding: 40px;">
               暂无可购买土地
+            </div>
+            <div v-else>
+              <div v-for="land in marketLands" :key="land.id" class="card mb-3">
+                <div class="flex justify-between items-start mb-2">
+                  <div>
+                    <div class="font-semibold text-white">{{ land.city }} - {{ land.district }}</div>
+                    <div class="text-xs text-white/50 mt-1">
+                      <span class="bg-white/10 px-2 py-0.5 rounded">{{ land.landUse }}</span>
+                      <span class="ml-2">容积率 {{ land.floorAreaRatio }}</span>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-lg font-bold text-amber-400">{{ formatMoney(land.currentPrice) }}</div>
+                    <div class="text-xs text-white/50">当前价格</div>
+                  </div>
+                </div>
+
+                <!-- 土地标签 -->
+                <div class="flex flex-wrap gap-1 mb-3">
+                  <span v-for="tag in land.tags" :key="tag" class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
+                    {{ tag }}
+                  </span>
+                </div>
+
+                <!-- 土地信息 -->
+                <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                  <div class="flex justify-between">
+                    <span class="text-white/50">占地面积</span>
+                    <span class="text-white">{{ formatArea(land.area) }}㎡</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-white/50">可建面积</span>
+                    <span class="text-green-400">{{ formatArea(land.area * land.floorAreaRatio) }}㎡</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-white/50">楼面地价</span>
+                    <span class="text-white">{{ formatMoney(land.pricePerSquare) }}/㎡</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-white/50">土地年限</span>
+                    <span class="text-white">{{ land.useYears }}年</span>
+                  </div>
+                </div>
+
+                <!-- 资质限制提示 -->
+                <div v-if="land.area > maxLandArea" class="text-xs text-red-400 mb-2 bg-red-500/10 p-2 rounded">
+                  ⚠️ 该土地面积超出您的资质限制（最大{{ formatLandArea(maxLandArea) }}），无法购买
+                </div>
+
+                <!-- 操作按钮 -->
+                <button
+                  class="btn-primary btn-full"
+                  :disabled="land.area > maxLandArea || cash < land.currentPrice"
+                  :class="{ 'opacity-50 cursor-not-allowed': land.area > maxLandArea || cash < land.currentPrice }"
+                  @click="handlePurchaseLand(land)"
+                >
+                  <span v-if="land.area > maxLandArea">资质不符</span>
+                  <span v-else-if="cash < land.currentPrice">资金不足</span>
+                  <span v-else>购买土地</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1024,7 +1110,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/game'
 import type { City, ResearchProject } from '@/types/game'
@@ -1100,6 +1186,44 @@ const qualificationLevel = computed(() => {
   const levels: Record<number, string> = { 1: '一级', 2: '二级', 3: '三级', 4: '四级' }
   return levels[level] || '四级'
 })
+
+// 土地市场相关
+const marketLands = computed(() => gameStore.getLandMarketLands())
+const maxLandArea = computed(() => gameStore.getMaxLandArea())
+const daysToNextRefresh = computed(() => gameStore.getDaysToNextRefresh())
+
+function formatLandArea(area: number): string {
+  if (!isFinite(area)) {
+    return '不限'
+  }
+  if (area >= 1000000) {
+    return (area / 1000000).toFixed(1) + '百万'
+  }
+  return formatArea(area)
+}
+
+function handleRefreshMarket() {
+  if (confirm('确定要消耗5万现金立即刷新土地市场吗？')) {
+    if (cash.value >= 50000) {
+      if (gameStore.company) {
+        gameStore.company.cash -= 50000
+      }
+      gameStore.refreshLandMarket()
+      showToast('土地市场已刷新！')
+    } else {
+      showToast('现金不足，需要5万现金刷新市场')
+    }
+  }
+}
+
+function handlePurchaseLand(land: any) {
+  const result = gameStore.purchaseLand(land.id)
+  if (result) {
+    showToast(`成功购买${land.city} ${land.district}土地！`)
+  } else {
+    showToast('购买失败，请检查资金和资质')
+  }
+}
 
 const enterpriseTypeText = computed(() => {
   const type = company.value?.enterpriseType
@@ -1324,6 +1448,11 @@ function goToCityResearch() {
 function showToast(message: string) {
   alert(message)
 }
+
+// 组件挂载时检查土地市场是否需要刷新
+onMounted(() => {
+  gameStore.checkAndRefreshLandMarket()
+})
 </script>
 
 <style scoped>

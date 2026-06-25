@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { GameState, Company, Player, Land, Project, City, ResearchProject, CityResearch } from '@/types/game'
+import type { GameState, Company, Player, Land, Project, City, ResearchProject, CityResearch, MarketLand, LandMarketConfig } from '@/types/game'
 
 // 从原始localStorage key读取数据
 const OLD_SAVE_KEY = 'real-estate-save'
@@ -278,6 +278,45 @@ const CITIES_DATA: City[] = [
     }
   }
 ]
+
+// 土地市场配置
+const LAND_MARKET_CONFIG: LandMarketConfig = {
+  maxLandCount: 6,
+  refreshIntervalDays: 15,
+  priceMultiplierByQualification: {
+    1: 0.7,
+    2: 0.85,
+    3: 1.0,
+    4: 1.15
+  },
+  maxAreaByQualification: {
+    1: Infinity,
+    2: 2500000,
+    3: 1500000,
+    4: 500000
+  },
+  discountRateByCredit: {
+    'AAA': 0.70,
+    'AA': 0.80,
+    'A': 0.90,
+    'B': 1.00,
+    'C': 1.10
+  }
+}
+
+// 土地用途类型
+type LandUseType = '住宅' | '商业' | '综合体' | '工业'
+
+// 土地用途配置
+const LAND_USE_CONFIG: Record<LandUseType, { floorAreaRatio: [number, number]; buildingDensity: [number, number]; greeningRate: [number, number]; useYears: number; priceMultiplier: number }> = {
+  '住宅': { floorAreaRatio: [2.0, 3.5], buildingDensity: [0.2, 0.35], greeningRate: [0.30, 0.45], useYears: 70, priceMultiplier: 1.0 },
+  '商业': { floorAreaRatio: [3.0, 6.0], buildingDensity: [0.3, 0.5], greeningRate: [0.20, 0.35], useYears: 40, priceMultiplier: 1.3 },
+  '综合体': { floorAreaRatio: [3.5, 5.5], buildingDensity: [0.35, 0.5], greeningRate: [0.25, 0.35], useYears: 50, priceMultiplier: 1.2 },
+  '工业': { floorAreaRatio: [1.0, 2.5], buildingDensity: [0.4, 0.6], greeningRate: [0.15, 0.25], useYears: 50, priceMultiplier: 0.6 }
+}
+
+// 土地标签池
+const LAND_TAG_POOL = ['地铁旁', '江景房', '学区房', 'CBD核心', '新城规划', '旧改项目', 'TOD项目', '景观资源', '产业配套', '政策倾斜', '价格洼地', '升值潜力大']
 
 export interface SaveSlot {
   id: string
@@ -558,7 +597,16 @@ export const useGameStore = defineStore('game', () => {
         housingPriceIndex: 1.0
       },
       policies: [],
-      achievements: []
+      achievements: [],
+      landMarket: {
+        lands: [],
+        lastRefreshTime: { year: 2008, month: 0, day: 1 }
+      }
+    }
+
+    // 初始化土地市场
+    if (gameState.value) {
+      refreshLandMarket()
     }
     
     setTimeout(() => {
@@ -821,6 +869,213 @@ export const useGameStore = defineStore('game', () => {
       company: updatedCompany
     }
   }
+
+  // ========== 土地市场相关函数 ==========
+
+  // 计算游戏日期差（天数）
+  function daysBetween(date1: { year: number; month: number; day: number }, date2: { year: number; month: number; day: number }): number {
+    const d1 = new Date(date1.year, date1.month, date1.day)
+    const d2 = new Date(date2.year, date2.month, date2.day)
+    return Math.floor((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24))
+  }
+
+  // 添加天数到日期
+  function addDays(date: { year: number; month: number; day: number }, days: number): { year: number; month: number; day: number } {
+    const d = new Date(date.year, date.month, date.day + days)
+    return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() }
+  }
+
+  // 获取公司资质等级对应的最大可开发面积
+  function getMaxLandArea(): number {
+    const qualification = gameState.value?.company?.qualificationLevel || 4
+    return LAND_MARKET_CONFIG.maxAreaByQualification[qualification] || 500000
+  }
+
+  // 获取公司资质等级对应的价格系数
+  function getQualificationPriceMultiplier(): number {
+    const qualification = gameState.value?.company?.qualificationLevel || 4
+    return LAND_MARKET_CONFIG.priceMultiplierByQualification[qualification] || 1.0
+  }
+
+  // 获取公司信用等级对应的折扣率
+  function getCreditDiscountRate(): number {
+    const credit = gameState.value?.company?.creditRating || 'C'
+    return LAND_MARKET_CONFIG.discountRateByCredit[credit] || 1.0
+  }
+
+  // 生成随机数
+  function random(min: number, max: number): number {
+    return Math.random() * (max - min) + min
+  }
+
+  // 生成随机整数
+  function randomInt(min: number, max: number): number {
+    return Math.floor(random(min, max + 1))
+  }
+
+  // 随机选择数组元素
+  function randomPick<T>(arr: T[]): T {
+    return arr[Math.floor(Math.random() * arr.length)]
+  }
+
+  // 随机选择多个不重复的元素
+  function randomPickMultiple<T>(arr: T[], count: number): T[] {
+    const shuffled = [...arr].sort(() => Math.random() - 0.5)
+    return shuffled.slice(0, count)
+  }
+
+  // 生成单块土地
+  function generateLand(): MarketLand {
+    const cityData = randomPick(CITIES_DATA)
+    const districts = ['朝阳', '海淀', '丰台', '浦东', '天河', '福田', '锦江', '西湖', '鼓楼', '江岸']
+    const district = randomPick(districts)
+    const landUse = randomPick(['住宅', '住宅', '住宅', '商业', '综合体', '工业'] as LandUseType[])
+    const useConfig = LAND_USE_CONFIG[landUse]
+
+    const maxArea = getMaxLandArea()
+
+    let area: number
+    const minArea = 10000
+    if (maxArea === Infinity) {
+      area = randomInt(minArea, 500000)
+    } else {
+      area = randomInt(minArea, Math.min(maxArea, 500000))
+    }
+
+    const basePrice = cityData.avgPrice * useConfig.priceMultiplier * random(0.8, 1.2)
+
+    const floorAreaRatio = random(useConfig.floorAreaRatio[0], useConfig.floorAreaRatio[1])
+    const pricePerSquare = basePrice / floorAreaRatio
+
+    const qualificationMultiplier = getQualificationPriceMultiplier()
+    const creditDiscount = getCreditDiscountRate()
+    const discountRate = qualificationMultiplier * creditDiscount
+
+    const currentPrice = Math.round(basePrice * discountRate)
+
+    const tagCount = randomInt(1, 3)
+    const tags = randomPickMultiple(LAND_TAG_POOL, tagCount)
+
+    const gameTime = gameState.value?.gameTime || { year: 2008, month: 0, day: 1 }
+    const expireDate = addDays(gameTime, LAND_MARKET_CONFIG.refreshIntervalDays)
+
+    return {
+      id: 'land_market_' + Date.now() + '_' + randomInt(1000, 9999),
+      province: cityData.name,
+      city: cityData.name,
+      district,
+      area,
+      floorAreaRatio: Math.round(floorAreaRatio * 100) / 100,
+      buildingDensity: Math.round(random(useConfig.buildingDensity[0], useConfig.buildingDensity[1]) * 100) / 100,
+      greeningRate: Math.round(random(useConfig.greeningRate[0], useConfig.greeningRate[1]) * 100) / 100,
+      landUse,
+      useYears: useConfig.useYears,
+      basePrice: Math.round(basePrice),
+      currentPrice,
+      pricePerSquare: Math.round(pricePerSquare),
+      discountRate: Math.round(discountRate * 100) / 100,
+      tags,
+      expireDate
+    }
+  }
+
+  // 刷新土地市场
+  function refreshLandMarket() {
+    if (!gameState.value) return
+
+    const gameTime = gameState.value.gameTime
+    gameState.value.landMarket.lastRefreshTime = { ...gameTime }
+
+    const newLands: MarketLand[] = []
+    const count = LAND_MARKET_CONFIG.maxLandCount
+
+    for (let i = 0; i < count; i++) {
+      newLands.push(generateLand())
+    }
+
+    gameState.value.landMarket.lands = newLands
+  }
+
+  // 检查并刷新土地市场（基于游戏时间）
+  function checkAndRefreshLandMarket() {
+    if (!gameState.value) return
+
+    const gameTime = gameState.value.gameTime
+    const lastRefresh = gameState.value.landMarket.lastRefreshTime
+    const daysPassed = daysBetween(lastRefresh, gameTime)
+
+    if (daysPassed >= LAND_MARKET_CONFIG.refreshIntervalDays) {
+      refreshLandMarket()
+    }
+  }
+
+  // 购买土地
+  function purchaseLand(landId: string): boolean {
+    if (!gameState.value || !company.value) return false
+
+    const land = gameState.value.landMarket.lands.find(l => l.id === landId)
+    if (!land) return false
+
+    if (company.value.cash < land.currentPrice) {
+      return false
+    }
+
+    const maxArea = getMaxLandArea()
+    if (land.area > maxArea) {
+      return false
+    }
+
+    // 扣除现金
+    const updatedCompany = { ...company.value }
+    updatedCompany.cash -= land.currentPrice
+    gameState.value.company = updatedCompany
+
+    // 添加到土地储备
+    const newLand: Land = {
+      id: 'land_' + Date.now(),
+      province: land.province,
+      city: land.city,
+      district: land.district,
+      area: land.area,
+      floorAreaRatio: land.floorAreaRatio,
+      buildingDensity: land.buildingDensity,
+      greeningRate: land.greeningRate,
+      landUse: land.landUse,
+      useYears: land.useYears,
+      acquisitionPrice: land.currentPrice,
+      acquisitionDate: new Date().toISOString(),
+      status: 'pending',
+      currentValue: land.currentPrice,
+      tags: land.tags
+    }
+
+    gameState.value.landReserves.push(newLand)
+    gameState.value.landMarket.lands = gameState.value.landMarket.lands.filter(l => l.id !== landId)
+
+    return true
+  }
+
+  // 获取土地市场数据
+  function getLandMarketLands() {
+    return gameState.value?.landMarket?.lands || []
+  }
+
+  function getLandMarketLastRefresh() {
+    return gameState.value?.landMarket?.lastRefreshTime || { year: 2008, month: 0, day: 1 }
+  }
+
+  // 获取下次刷新时间
+  function getNextRefreshTime(): { year: number; month: number; day: number } {
+    const lastRefresh = getLandMarketLastRefresh()
+    return addDays(lastRefresh, LAND_MARKET_CONFIG.refreshIntervalDays)
+  }
+
+  // 获取距离下次刷新的天数
+  function getDaysToNextRefresh(): number {
+    const gameTime = gameState.value?.gameTime || { year: 2008, month: 0, day: 1 }
+    const nextRefresh = getNextRefreshTime()
+    return daysBetween(gameTime, nextRefresh)
+  }
   
   return { 
     gameState, 
@@ -852,6 +1107,17 @@ export const useGameStore = defineStore('game', () => {
     getAvailableResearchProjects,
     startResearch,
     advanceResearch,
-    addResearchPoints
+    addResearchPoints,
+    // 土地市场
+    refreshLandMarket,
+    checkAndRefreshLandMarket,
+    purchaseLand,
+    getLandMarketLands,
+    getLandMarketLastRefresh,
+    getNextRefreshTime,
+    getDaysToNextRefresh,
+    getMaxLandArea,
+    getQualificationPriceMultiplier,
+    getCreditDiscountRate
   }
 })
