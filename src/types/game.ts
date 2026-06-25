@@ -54,6 +54,13 @@ export interface Company {
   technicalPersonnel?: number // 技术人员数量
   // 财务数据
   financialStatements?: FinancialStatements
+  // 行业执照
+  licenses?: BusinessLicense[]
+  industryAssociations?: IndustryAssociation[]
+  // 治理相关
+  organizationStructure?: OrganizationStructure
+  riskControlSystem?: RiskControlSystem
+  internalAudits?: InternalAudit[]
 }
 
 export interface QualificationProgress {
@@ -187,6 +194,84 @@ export interface Employee {
   position: string
   name: string
   salary: number
+}
+
+// 行业执照
+export interface BusinessLicense {
+  id: string
+  name: string
+  type: 'business' | 'qualification' | 'industry' | 'special'
+  status: 'pending' | 'valid' | 'expired' | 'revoked'
+  issueDate?: string
+  expireDate?: string
+  issuingAuthority: string
+  requirements: string[]
+  description: string
+  effect?: string
+}
+
+// 行业协会
+export interface IndustryAssociation {
+  id: string
+  name: string
+  type: 'national' | 'provincial' | 'city'
+  joined: boolean
+  joinDate?: string
+  membershipFee: number
+  benefits: string[]
+  requirements: string[]
+}
+
+// 组织架构
+export interface OrganizationStructure {
+  departments: Department[]
+  totalEmployees: number
+}
+
+export interface Department {
+  id: string
+  name: string
+  manager?: Executive
+  employees: Employee[]
+  budget: number
+  description: string
+}
+
+// 风控体系
+export interface RiskControlSystem {
+  level: number
+  policies: RiskPolicy[]
+  lastAuditDate?: string
+  auditFrequency: 'monthly' | 'quarterly' | 'yearly'
+}
+
+export interface RiskPolicy {
+  id: string
+  name: string
+  type: 'finance' | 'operation' | 'legal' | 'market'
+  status: 'active' | 'inactive'
+  effectiveness: number
+  description: string
+}
+
+// 内部审计
+export interface InternalAudit {
+  id: string
+  name: string
+  type: 'financial' | 'operational' | 'compliance' | 'special'
+  status: 'planned' | 'in_progress' | 'completed'
+  startDate?: string
+  endDate?: string
+  findings: AuditFinding[]
+  recommendations: string[]
+}
+
+export interface AuditFinding {
+  id: string
+  description: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  status: 'open' | 'resolved'
+  department?: string
 }
 
 export interface ThreeRedLines {

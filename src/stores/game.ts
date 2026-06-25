@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { GameState, Company, Player, Land, Project, City, ResearchProject, CityResearch, MarketLand, LandMarketConfig, ProjectType, QualityLevel, ProjectTypeConfig, QualityLevelConfig, DevelopmentPlan, FiveCertificates, ProjectPhases, PhaseDetail, CertificateStatus, ProjectStatus, ConstructionPhase, QualificationRequirement, IPORequirement, StockInfo, FinancialStatements, BalanceSheet, IncomeStatement, CashFlowStatement } from '@/types/game'
+import type { GameState, Company, Player, Land, Project, City, ResearchProject, CityResearch, MarketLand, LandMarketConfig, ProjectType, QualityLevel, ProjectTypeConfig, QualityLevelConfig, DevelopmentPlan, FiveCertificates, ProjectPhases, PhaseDetail, CertificateStatus, ProjectStatus, ConstructionPhase, QualificationRequirement, IPORequirement, StockInfo, FinancialStatements, BalanceSheet, IncomeStatement, CashFlowStatement, BusinessLicense, IndustryAssociation, OrganizationStructure, RiskControlSystem, InternalAudit, Executive, Employee } from '@/types/game'
 
 // 从原始localStorage key读取数据
 const OLD_SAVE_KEY = 'real-estate-save'
@@ -1023,6 +1023,13 @@ export const useGameStore = defineStore('game', () => {
     return LAND_MARKET_CONFIG.maxAreaByQualification[qualification] || 500000
   }
 
+  // 获取土地市场最大可刷新面积（当前资质可建面积的30%）
+  function getMaxMarketLandArea(): number {
+    const maxArea = getMaxLandArea()
+    if (maxArea === Infinity) return 500000 * 0.3
+    return Math.floor(maxArea * 0.3)
+  }
+
   // 获取公司资质等级对应的价格系数
   function getQualificationPriceMultiplier(): number {
     const qualification = gameState.value?.company?.qualificationLevel || 4
@@ -1064,7 +1071,7 @@ export const useGameStore = defineStore('game', () => {
     const landUse = randomPick(['住宅', '住宅', '住宅', '商业', '综合体', '工业'] as LandUseType[])
     const useConfig = LAND_USE_CONFIG[landUse]
 
-    const maxArea = getMaxLandArea()
+    const maxArea = getMaxMarketLandArea()
 
     let area: number
     const minArea = 10000
@@ -1262,6 +1269,15 @@ export const useGameStore = defineStore('game', () => {
     const pricePerSqm = basePrice * typeConfig.priceMultiplier * qualityConfig.priceMultiplier
     const brandBoost = (company.value?.brand?.score || 0) / 100 * qualityConfig.brandBoost
 
+    // 资质等级对售价的影响（四级90%，三级100%，二级110%，一级120%）
+    const qualification = company.value?.qualificationLevel || 4
+    const qualificationMultiplier = {
+      1: 1.2,
+      2: 1.1,
+      3: 1.0,
+      4: 0.9
+    }[qualification] || 0.9
+
     // 获取宏观经济指数
     const macroEconomy = gameState.value?.macroEconomy || {
       gdpGrowthRate: 5,
@@ -1272,13 +1288,13 @@ export const useGameStore = defineStore('game', () => {
     }
 
     // 基础收益
-    const baseRevenue = totalArea * pricePerSqm * (1 + brandBoost)
+    const baseRevenue = totalArea * pricePerSqm * (1 + brandBoost) * qualificationMultiplier
 
     // 应用宏观经济指数调整（基于房价指数）
     const macroAdjustedRevenue = baseRevenue * macroEconomy.housingPriceIndex
 
-    // 限制最高收益为基数的130%
-    const maxRevenue = baseRevenue * 1.3
+    // 限制最高收益为基数的120%
+    const maxRevenue = baseRevenue * 1.2
     const finalRevenue = Math.min(macroAdjustedRevenue, maxRevenue)
 
     return Math.round(finalRevenue)
@@ -1605,6 +1621,135 @@ export const useGameStore = defineStore('game', () => {
     return gameState.value?.landReserves.find(l => l.id === landId)
   }
 
+  // ========== 时间系统 ==========
+  let timePaused = false
+  let currentSpeed = 1
+
+  function setTimeSpeed(speed: number): void {
+    currentSpeed = speed
+    if (speed > 0) {
+      timePaused = false
+    }
+  }
+
+  function getTimeSpeed(): number {
+    return currentSpeed
+  }
+
+  function toggleTimePause(): boolean {
+    timePaused = !timePaused
+    return timePaused
+  }
+
+  function isTimePaused(): boolean {
+    return timePaused
+  }
+
+  // 推进一天
+  function advanceDay(): void {
+    if (!gameState.value || timePaused) return
+
+    const time = gameState.value.gameTime
+    time.day += 1
+
+    const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    if (time.day > daysInMonth[time.month]) {
+      time.day = 1
+      time.month += 1
+      if (time.month > 11) {
+        time.month = 0
+        time.year += 1
+      }
+      // 每月推进
+      advanceMonthly()
+    }
+
+    // 检查土地市场刷新
+    checkAndRefreshLandMarket()
+
+    gameState.value = { ...gameState.value }
+  }
+
+  // 每月更新
+  function advanceMonthly(): void {
+    advanceResearch()
+    advanceCertificates()
+    advanceConstruction()
+    advanceMacroEconomy()
+    updateMonthlyProfit()
+    updateGovernanceEffects()
+  }
+
+  // ========== 治理系统效果计算 ==========
+
+  // 计算高管团队效率加成
+  function getExecutiveEfficiencyBonus(): number {
+    if (!company.value || !company.value.executives || company.value.executives.length === 0) {
+      return 1.0
+    }
+    const avgAbility = company.value.executives.reduce((sum, exec) => sum + exec.ability, 0) / company.value.executives.length
+    return 1.0 + (avgAbility - 50) / 200 // 能力50为基准，每10点能力+5%效率
+  }
+
+  // 计算风控系统风险降低比例
+  function getRiskControlReduction(): number {
+    if (!company.value || !company.value.riskControlSystem) {
+      return 0
+    }
+    const rc = company.value.riskControlSystem
+    const activePolicies = rc.policies.filter(p => p.status === 'active')
+    const avgEffectiveness = activePolicies.length > 0
+      ? activePolicies.reduce((sum, p) => sum + p.effectiveness, 0) / activePolicies.length
+      : 0
+    return (rc.level * 0.05 + avgEffectiveness / 500) // 每级风控+5%，平均有效性50%+10%
+  }
+
+  // 计算组织架构完善度
+  function getOrganizationCompletion(): number {
+    if (!company.value || !company.value.organizationStructure) {
+      return 0.5
+    }
+    const depts = company.value.organizationStructure.departments
+    const filledDepts = depts.filter(d => d.employees.length > 0 || d.manager).length
+    return depts.length > 0 ? filledDepts / depts.length : 0.5
+  }
+
+  // 应用治理系统效果（每月调用）
+  function updateGovernanceEffects(): void {
+    if (!company.value || !gameState.value) return
+
+    const efficiencyBonus = getExecutiveEfficiencyBonus()
+    const riskReduction = getRiskControlReduction()
+    const orgCompletion = getOrganizationCompletion()
+
+    // 更新三条红线（风控影响）
+    if (company.value.threeRedLines) {
+      const baseLiabilityRatio = company.value.totalLiabilities / Math.max(company.value.totalAssets, 1)
+      const adjustedRatio = Math.max(0, baseLiabilityRatio * (1 - riskReduction * 0.1))
+      gameState.value.company!.threeRedLines.assetLiabilityRatio = adjustedRatio
+      gameState.value.company!.threeRedLines.netDebtRatio = Math.max(0, company.value.threeRedLines.netDebtRatio * (1 - riskReduction * 0.05))
+      gameState.value.company!.threeRedLines.cashShortDebtRatio = company.value.threeRedLines.cashShortDebtRatio * (1 + riskReduction * 0.1)
+    }
+
+    // 组织架构完善度影响总资产（运营效率）
+    if (orgCompletion > 0.7 && company.value.employees.length > 10) {
+      const efficiencyGain = (orgCompletion - 0.7) * 0.02 * company.value.totalAssets
+      gameState.value.company!.totalAssets += Math.round(efficiencyGain * 0.01)
+    }
+  }
+
+  function updateMonthlyProfit(): void {
+    if (!company.value) return
+    const completedProjects = projects.value.filter(p => p.status === 'completed')
+    const revenue = completedProjects.reduce((sum, p) => sum + (p.soldArea * p.avgPricePerSqm * 0.05), 0) // 5%的月供
+    const baseCost = company.value.employees.reduce((sum, e) => sum + e.salary, 0)
+    const execCost = (company.value.executives || []).reduce((sum, e) => sum + e.salary, 0)
+    const efficiencyBonus = getExecutiveEfficiencyBonus()
+    const adjustedRevenue = revenue * efficiencyBonus
+    const adjustedCost = (baseCost + execCost) * (1 - getRiskControlReduction() * 0.05)
+    gameState.value!.company!.monthlyProfit = Math.round(adjustedRevenue - adjustedCost)
+  }
+
   // ========== 研究点计算 ==========
   // 每开发并且售卖完成10万面积增加50点研究点
   function calculateResearchPointsFromSoldArea(): number {
@@ -1869,8 +2014,9 @@ export const useGameStore = defineStore('game', () => {
       totalLiabilities: company.value.totalLiabilities,
       paidInCapital: company.value.paidInCapital,
       capitalReserve: 0,
-      surplusReserve: company.value.totalAssets - company.value.paidInCapital - company.value.totalLiabilities,
-      retainedEarnings: company.value.monthlyProfit * 12
+      surplusReserve: Math.max(0, company.value.totalAssets - company.value.paidInCapital - company.value.totalLiabilities),
+      retainedEarnings: company.value.monthlyProfit * 12,
+      totalEquity: company.value.totalAssets - company.value.totalLiabilities
     }
 
     // 利润表
@@ -1971,6 +2117,157 @@ export const useGameStore = defineStore('game', () => {
     gameState.value = { ...gameState.value, macroEconomy: { ...economy } }
   }
 
+  // ========== 行业执照 ==========
+  const DEFAULT_LICENSES: BusinessLicense[] = [
+    {
+      id: 'business-license',
+      name: '营业执照',
+      type: 'business',
+      status: 'valid',
+      issueDate: '2008-01-01',
+      expireDate: '2028-01-01',
+      issuingAuthority: '工商行政管理局',
+      requirements: ['公司注册完成', '注册资本到位'],
+      description: '企业合法经营的基本凭证',
+      effect: '允许正常开展经营活动'
+    },
+    {
+      id: 'qualification-cert',
+      name: '房地产开发资质证书',
+      type: 'qualification',
+      status: 'valid',
+      issueDate: '2008-01-01',
+      expireDate: '2013-01-01',
+      issuingAuthority: '住房和城乡建设部',
+      requirements: ['注册资本达标', '专业人员配备'],
+      description: '房地产开发企业资质等级证书',
+      effect: '允许从事对应等级的房地产开发业务'
+    },
+    {
+      id: 'tax-registration',
+      name: '税务登记证',
+      type: 'business',
+      status: 'valid',
+      issueDate: '2008-01-01',
+      issuingAuthority: '国家税务总局',
+      requirements: ['营业执照', '组织机构代码证'],
+      description: '企业纳税登记凭证'
+    },
+    {
+      id: 'construction-permit-qual',
+      name: '建筑工程施工资质',
+      type: 'special',
+      status: 'pending',
+      issuingAuthority: '住房和城乡建设部',
+      requirements: ['净资产≥5000万', '注册建造师≥5人', '工程技术人员≥30人'],
+      description: '从事建筑工程施工的资质许可',
+      effect: '可自行施工，节省10%建造成本'
+    }
+  ]
+
+  const DEFAULT_ASSOCIATIONS: IndustryAssociation[] = [
+    {
+      id: 'crea',
+      name: '中国房地产业协会',
+      type: 'national',
+      joined: false,
+      membershipFee: 100000,
+      benefits: ['行业信息优先获取', '政策解读服务', '品牌背书', '人脉资源'],
+      requirements: ['房地产开发资质', '无重大违法记录']
+    },
+    {
+      id: 'local-real-estate-assoc',
+      name: '地方房地产协会',
+      type: 'provincial',
+      joined: false,
+      membershipFee: 50000,
+      benefits: ['地方政策协调', '本地项目对接', '行业交流平台'],
+      requirements: ['本地注册企业']
+    }
+  ]
+
+  function getBusinessLicenses(): BusinessLicense[] {
+    return company.value?.licenses || DEFAULT_LICENSES
+  }
+
+  function getIndustryAssociations(): IndustryAssociation[] {
+    return company.value?.industryAssociations || DEFAULT_ASSOCIATIONS
+  }
+
+  function applyForLicense(licenseId: string): boolean {
+    if (!company.value) return false
+    const licenses = company.value.licenses || [...DEFAULT_LICENSES]
+    const license = licenses.find(l => l.id === licenseId)
+    if (!license) return false
+    license.status = 'pending'
+    gameState.value!.company!.licenses = licenses
+    gameState.value = { ...gameState.value }
+    return true
+  }
+
+  function joinAssociation(assocId: string): boolean {
+    if (!company.value) return false
+    const associations = company.value.industryAssociations || [...DEFAULT_ASSOCIATIONS]
+    const assoc = associations.find(a => a.id === assocId)
+    if (!assoc || assoc.joined) return false
+    if (company.value.cash < assoc.membershipFee) return false
+
+    assoc.joined = true
+    assoc.joinDate = new Date().toISOString()
+    gameState.value!.company!.cash -= assoc.membershipFee
+    gameState.value!.company!.industryAssociations = associations
+    gameState.value = { ...gameState.value }
+    return true
+  }
+
+  // ========== 治理系统 ==========
+  const DEFAULT_ORG_STRUCTURE: OrganizationStructure = {
+    departments: [
+      { id: 'engineering', name: '工程管理部', employees: [], budget: 500000, description: '负责项目工程管理' },
+      { id: 'marketing', name: '市场营销部', employees: [], budget: 300000, description: '负责营销推广销售' },
+      { id: 'finance', name: '财务部', employees: [], budget: 200000, description: '负责财务管理' },
+      { id: 'hr', name: '人力资源部', employees: [], budget: 150000, description: '负责人力资源管理' },
+      { id: 'legal', name: '法务部', employees: [], budget: 100000, description: '负责法律事务' }
+    ],
+    totalEmployees: 0
+  }
+
+  const DEFAULT_RISK_CONTROL: RiskControlSystem = {
+    level: 1,
+    policies: [
+      { id: 'financial-risk', name: '财务风险管控', type: 'finance', status: 'active', effectiveness: 50, description: '监控公司财务风险' },
+      { id: 'legal-risk', name: '法律合规管控', type: 'legal', status: 'active', effectiveness: 50, description: '确保经营合法合规' }
+    ],
+    auditFrequency: 'yearly'
+  }
+
+  function getOrganizationStructure(): OrganizationStructure {
+    return company.value?.organizationStructure || DEFAULT_ORG_STRUCTURE
+  }
+
+  function getRiskControlSystem(): RiskControlSystem {
+    return company.value?.riskControlSystem || DEFAULT_RISK_CONTROL
+  }
+
+  function getInternalAudits(): InternalAudit[] {
+    return company.value?.internalAudits || []
+  }
+
+  function hireExecutive(executive: Executive): boolean {
+    if (!company.value) return false
+    if (company.value.cash < executive.salary * 12) return false
+    gameState.value!.company!.executives.push(executive)
+    gameState.value = { ...gameState.value }
+    return true
+  }
+
+  function fireExecutive(execId: string): boolean {
+    if (!company.value) return false
+    gameState.value!.company!.executives = company.value.executives.filter(e => e.id !== execId)
+    gameState.value = { ...gameState.value }
+    return true
+  }
+
   return { 
     gameState, 
     isLoading, 
@@ -2050,6 +2347,27 @@ export const useGameStore = defineStore('game', () => {
     generateFinancialStatements,
     // 宏观经济
     getMacroEconomy,
-    advanceMacroEconomy
+    advanceMacroEconomy,
+    // 时间系统
+    setTimeSpeed,
+    getTimeSpeed,
+    toggleTimePause,
+    isTimePaused,
+    advanceDay,
+    getMaxMarketLandArea,
+    // 行业执照
+    getBusinessLicenses,
+    getIndustryAssociations,
+    applyForLicense,
+    joinAssociation,
+    // 治理系统
+    getOrganizationStructure,
+    getRiskControlSystem,
+    getInternalAudits,
+    hireExecutive,
+    fireExecutive,
+    getExecutiveEfficiencyBonus,
+    getRiskControlReduction,
+    getOrganizationCompletion
   }
 })

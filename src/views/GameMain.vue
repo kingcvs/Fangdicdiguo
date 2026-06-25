@@ -3,16 +3,23 @@
     <!-- 顶部状态栏 -->
     <div class="bg-game-card/90 border-b border-white/10 p-4">
       <div class="max-w-md mx-auto">
-        <!-- 日期和时间流动控制 -->
+        <!-- 日期和时间控制 -->
         <div class="flex justify-between items-center mb-3">
           <div class="text-white/70 text-sm">{{ gameTime }}</div>
           <div class="flex items-center gap-2">
-            <span class="text-white/50 text-xs">时间流速:</span>
+            <button
+              class="px-2 py-1 rounded text-xs font-medium transition-all"
+              :class="timePaused ? 'bg-red-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'"
+              @click="handleTogglePause"
+            >
+              {{ timePaused ? '▶ 继续' : '⏸ 暂停' }}
+            </button>
+            <span class="text-white/50 text-xs">速度:</span>
             <button
               v-for="speed in [1, 2, 3]"
               :key="speed"
               class="px-2 py-1 rounded text-xs font-medium transition-all"
-              :class="timeSpeed === speed ? 'bg-amber-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'"
+              :class="timeSpeed === speed && !timePaused ? 'bg-amber-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'"
               @click="setTimeSpeed(speed)"
             >
               {{ speed }}X
@@ -956,11 +963,11 @@
 
         <!-- 营销销售页面 -->
         <div v-else-if="activeTab === 'marketing'">
-          <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+          <div class="grid grid-cols-3 gap-2 mb-4">
             <button
               v-for="(tab, idx) in marketingTabs"
               :key="idx"
-              class="btn-primary whitespace-nowrap text-sm"
+              class="btn-primary text-sm py-2"
               :class="activeMarketingTab === idx ? 'bg-amber-500' : ''"
               @click="activeMarketingTab = idx"
             >
@@ -1012,66 +1019,75 @@
 
         <!-- 运营管理页面 -->
         <div v-else-if="activeTab === 'operation'">
-          <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
-            <button
-              v-for="(tab, idx) in operationTabs"
-              :key="idx"
-              class="btn-primary whitespace-nowrap text-sm"
-              :class="activeOperationTab === idx ? 'bg-amber-500' : ''"
-              @click="activeOperationTab = idx"
-            >
-              {{ tab }}
-            </button>
+          <div class="section-title">📊 运营概览</div>
+          
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="card">
+              <div class="text-white/50 text-xs">员工总数</div>
+              <div class="text-xl font-bold text-blue-400">{{ company?.employees?.length || 0 }}</div>
+            </div>
+            <div class="card">
+              <div class="text-white/50 text-xs">高管人数</div>
+              <div class="text-xl font-bold text-purple-400">{{ company?.executives?.length || 0 }}</div>
+            </div>
+            <div class="card">
+              <div class="text-white/50 text-xs">部门数量</div>
+              <div class="text-xl font-bold text-green-400">{{ organizationStructure.departments.length }}</div>
+            </div>
+            <div class="card">
+              <div class="text-white/50 text-xs">月人力成本</div>
+              <div class="text-xl font-bold text-red-400">{{ formatMoney(monthlySalaryCost) }}</div>
+            </div>
           </div>
 
-          <!-- 员工管理 -->
-          <div v-if="activeOperationTab === 0">
-            <div class="section-title">👥 我的员工</div>
-            <div v-if="(company?.employees?.length || 0) === 0" class="card" style="text-align: center; color: #64748b; padding: 40px;">
-              暂无员工，去招聘市场看看吧！
-            </div>
-            <div v-else v-for="emp in company?.employees" :key="emp.id" class="card mb-3">
-              <div class="flex items-center gap-3">
-                <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-2xl">👤</div>
-                <div class="flex-1">
-                  <div class="font-semibold">{{ emp.name }}</div>
-                  <div class="text-white/50 text-sm">{{ emp.position }}</div>
-                </div>
-                <div class="text-right">
-                  <div class="text-amber-400 font-semibold">{{ formatMoney(emp.salary) }}</div>
-                  <div class="text-white/50 text-xs">月薪</div>
-                </div>
+          <div class="section-title">🏗️ 项目运营</div>
+          <div class="card mb-4">
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <div class="text-2xl font-bold text-blue-400">{{ projects.length }}</div>
+                <div class="text-white/50 text-xs">总项目数</div>
+              </div>
+              <div>
+                <div class="text-2xl font-bold text-amber-400">{{ ongoingProjectsCount }}</div>
+                <div class="text-white/50 text-xs">在建项目</div>
+              </div>
+              <div>
+                <div class="text-2xl font-bold text-green-400">{{ completedProjectsCount }}</div>
+                <div class="text-white/50 text-xs">已完成</div>
               </div>
             </div>
           </div>
 
-          <!-- 招聘市场 -->
-          <div v-else-if="activeOperationTab === 1">
-            <div class="section-title">🎯 招聘市场</div>
-            <div v-for="emp in availableEmployees" :key="emp.id" class="card mb-3 cursor-pointer" @click="showToast('招聘' + emp.name)">
-              <div class="flex items-center gap-3">
-                <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-2xl">👤</div>
-                <div class="flex-1">
-                  <div class="font-semibold">{{ emp.name }}</div>
-                  <div class="text-white/50 text-sm">{{ emp.position }}</div>
-                </div>
-                <div class="text-right">
-                  <div class="text-amber-400 font-semibold">{{ formatMoney(emp.salary) }}</div>
-                  <div class="text-white/50 text-xs">月薪</div>
-                </div>
+          <div class="section-title">💰 财务概览</div>
+          <div class="card mb-4">
+            <div class="space-y-3">
+              <div class="flex justify-between items-center">
+                <span class="text-white/70 text-sm">月收入</span>
+                <span class="text-green-400 font-semibold">{{ formatMoney(company?.monthlyRevenue || 0) }}</span>
               </div>
-              <button class="btn-primary btn-full mt-3">招聘</button>
+              <div class="flex justify-between items-center">
+                <span class="text-white/70 text-sm">月利润</span>
+                <span :class="(company?.monthlyProfit || 0) >= 0 ? 'text-green-400' : 'text-red-400'" class="font-semibold">
+                  {{ formatMoney(company?.monthlyProfit || 0) }}
+                </span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-white/70 text-sm">负债率</span>
+                <span :class="parseFloat(debtRatio) > 70 ? 'text-red-400' : 'text-green-400'" class="font-semibold">
+                  {{ debtRatio }}%
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 资本运作页面 -->
         <div v-else-if="activeTab === 'capital'">
-          <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+          <div class="grid grid-cols-3 gap-2 mb-4">
             <button
               v-for="(tab, idx) in capitalTabs"
               :key="idx"
-              class="btn-primary whitespace-nowrap text-sm"
+              class="btn-primary text-sm py-2"
               :class="activeCapitalTab === idx ? 'bg-amber-500' : ''"
               @click="activeCapitalTab = idx"
             >
@@ -1081,46 +1097,151 @@
 
           <!-- 银行中心 -->
           <div v-if="activeCapitalTab === 0">
-            <div class="section-title">🏦 银行中心</div>
-            <div class="card mb-4">
-              <div class="text-sm text-white/50 mb-3">您的贷款利率将根据资质等级和信用等级进行调整</div>
-              <div class="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span class="text-white/50">资质等级:</span>
-                  <span class="text-blue-400 ml-1">{{ qualificationLevel }}</span>
+            <div v-if="!selectedBank">
+              <div class="section-title">🏦 银行中心</div>
+              <div class="card mb-4">
+                <div class="text-sm text-white/50 mb-3">您的贷款利率将根据资质等级和信用等级进行调整</div>
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span class="text-white/50">资质等级:</span>
+                    <span class="text-blue-400 ml-1">{{ qualificationLevel }}</span>
+                  </div>
+                  <div>
+                    <span class="text-white/50">信用等级:</span>
+                    <span class="text-purple-400 ml-1">{{ company?.creditRating || 'C' }}</span>
+                  </div>
                 </div>
-                <div>
-                  <span class="text-white/50">信用等级:</span>
-                  <span class="text-purple-400 ml-1">{{ company?.creditRating || 'C' }}</span>
+              </div>
+              <div v-for="bank in banks" :key="bank.id" class="card mb-3 cursor-pointer hover:bg-white/10 transition-colors" @click="selectedBank = bank.id">
+                <div class="flex justify-between items-start mb-3">
+                  <div>
+                    <div class="text-lg font-bold">{{ bank.name }}</div>
+                    <div class="text-white/50 text-xs mt-1">{{ bank.feature }}</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-xl font-bold text-green-400">{{ (getActualInterestRate(bank.id) * 100).toFixed(2) }}%</div>
+                    <div class="text-white/50 text-xs">实际利率</div>
+                  </div>
+                </div>
+                <div class="mt-2 text-xs text-white/50 mb-3">
+                  💡 {{ bank.description }}
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                  <div class="text-center bg-white/5 rounded p-2">
+                    <div class="text-white/50">最低贷款</div>
+                    <div class="text-amber-400 font-bold">{{ formatMoney(1000000) }}</div>
+                  </div>
+                  <div class="text-center bg-white/5 rounded p-2">
+                    <div class="text-white/50">最高可贷</div>
+                    <div class="text-green-400 font-bold">{{ formatMoney(maxLoanAmount) }}</div>
+                  </div>
+                  <div class="text-center bg-white/5 rounded p-2">
+                    <div class="text-white/50">贷款期限</div>
+                    <div class="text-blue-400 font-bold">最长60月</div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div v-for="bank in banks" :key="bank.id" class="card mb-3">
-              <div class="flex justify-between items-start mb-3">
-                <div>
-                  <div class="text-lg font-bold">{{ bank.name }}</div>
-                  <div class="text-white/50 text-xs mt-1">{{ bank.feature }}</div>
+
+            <div v-else>
+              <button class="btn-primary mb-4 text-sm" @click="selectedBank = null">
+                ← 返回银行列表
+              </button>
+              
+              <div class="card mb-4">
+                <div class="text-center mb-4">
+                  <div class="text-3xl mb-2">🏦</div>
+                  <div class="text-2xl font-bold text-game-accent">{{ currentBank?.name }}</div>
+                  <div class="text-white/50 text-sm">{{ currentBank?.feature }}</div>
                 </div>
-                <div class="text-right">
-                  <div class="text-xl font-bold text-green-400">{{ (getActualInterestRate(bank.id) * 100).toFixed(2) }}%</div>
-                  <div class="text-white/50 text-xs">实际利率</div>
+                <div class="grid grid-cols-2 gap-3 text-center">
+                  <div>
+                    <div class="text-white/50 text-xs">实际利率</div>
+                    <div class="font-bold text-green-400">{{ (getActualInterestRate(currentBank?.id || '') * 100).toFixed(2) }}%</div>
+                  </div>
+                  <div>
+                    <div class="text-white/50 text-xs">最高可贷</div>
+                    <div class="font-bold text-amber-400">{{ formatMoney(maxLoanAmount) }}</div>
+                  </div>
                 </div>
               </div>
-              <div class="mt-2 text-xs text-white/50 mb-3">
-                💡 {{ bank.description }}
+
+              <div class="section-title">💰 贷款</div>
+              <div class="card mb-4">
+                <div class="space-y-3">
+                  <div>
+                    <div class="text-xs text-white/50 mb-2">贷款金额</div>
+                    <input 
+                      type="range" 
+                      min="1000000" 
+                      :max="maxLoanAmount" 
+                      step="1000000"
+                      v-model="loanForm.amount"
+                      class="w-full"
+                    >
+                    <div class="text-right text-amber-400 font-bold mt-1">{{ formatMoney(loanForm.amount) }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs text-white/50 mb-2">贷款期限</div>
+                    <div class="grid grid-cols-4 gap-2">
+                      <button 
+                        v-for="term in [12, 24, 36, 60]" 
+                        :key="term"
+                        class="btn-primary text-sm py-2"
+                        :class="loanForm.term === term ? 'bg-amber-500' : ''"
+                        @click="loanForm.term = term"
+                      >
+                        {{ term }}月
+                      </button>
+                    </div>
+                  </div>
+                  <div class="bg-white/5 rounded-lg p-3 text-sm">
+                    <div class="flex justify-between mb-2">
+                      <span class="text-white/50">月还款额</span>
+                      <span class="text-amber-400 font-bold">{{ formatMoney(calculateMonthlyPayment()) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-white/50">总利息</span>
+                      <span class="text-red-400 font-bold">{{ formatMoney(calculateTotalInterest()) }}</span>
+                    </div>
+                  </div>
+                  <button 
+                    class="btn-primary btn-full bg-green-600 hover:bg-green-500"
+                    :disabled="cash < 0 || loanForm.amount > maxLoanAmount"
+                    @click="handleApplyLoan"
+                  >
+                    申请贷款
+                  </button>
+                </div>
               </div>
-              <div class="grid grid-cols-3 gap-2 text-xs">
-                <div class="text-center bg-white/5 rounded p-2">
-                  <div class="text-white/50">最低贷款</div>
-                  <div class="text-amber-400 font-bold">{{ formatMoney(1000000) }}</div>
+
+              <div class="section-title">💳 还款</div>
+              <div class="card mb-4">
+                <div v-if="activeLoans.length === 0" class="text-center text-white/50 py-8">
+                  暂无未还贷款
                 </div>
-                <div class="text-center bg-white/5 rounded p-2">
-                  <div class="text-white/50">最高可贷</div>
-                  <div class="text-green-400 font-bold">{{ formatMoney(maxLoanAmount) }}</div>
-                </div>
-                <div class="text-center bg-white/5 rounded p-2">
-                  <div class="text-white/50">贷款期限</div>
-                  <div class="text-blue-400 font-bold">最长60月</div>
+                <div v-else v-for="loan in activeLoans" :key="loan.id" class="border-b border-white/10 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0">
+                  <div class="flex justify-between items-center mb-2">
+                    <div class="font-semibold">{{ currentBank?.name }}</div>
+                    <div class="text-amber-400 font-bold">{{ formatMoney(loan.remainingPrincipal) }}</div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2 text-xs text-white/50 mb-3">
+                    <div>期限: {{ loan.term }}月</div>
+                    <div>已还: {{ loan.paidMonths }}月</div>
+                    <div>月供: {{ formatMoney(loan.monthlyPayment) }}</div>
+                    <div>利率: {{ (loan.interestRate * 100).toFixed(2) }}%</div>
+                  </div>
+                  <div class="progress-bar mb-3">
+                    <div class="progress-fill" :style="{ width: (loan.paidMonths / loan.term) * 100 + '%' }"></div>
+                  </div>
+                  <div class="flex gap-2">
+                    <button class="btn-primary flex-1 text-sm" @click="handleRepayLoan(loan.id, 'monthly')">
+                      按月还款
+                    </button>
+                    <button class="btn-primary flex-1 text-sm bg-amber-600 hover:bg-amber-500" @click="handleRepayLoan(loan.id, 'full')">
+                      提前结清
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1207,9 +1328,9 @@
 
           <!-- 股东操作 -->
           <div v-else-if="activeCapitalTab === 2">
-            <div class="section-title">👥 股东操作</div>
+            <div class="section-title">👥 股东结构</div>
             <div class="card mb-4">
-              <div class="font-bold mb-3">当前股东结构</div>
+              <div class="font-bold mb-3">当前股权结构</div>
               <div v-for="shareholder in company?.shareholders" :key="shareholder.id" class="flex justify-between items-center py-2 border-b border-white/10">
                 <div>
                   <div class="text-sm font-semibold">{{ shareholder.name }}</div>
@@ -1223,29 +1344,92 @@
                 暂无股东信息
               </div>
             </div>
+          </div>
 
-            <div class="card mb-4">
-              <div class="font-bold mb-3">股权管理</div>
-              <div class="space-y-2">
-                <button class="btn-primary btn-full text-sm" @click="handleAddShareholder">
-                  ➕ 增加股东
-                </button>
-                <button class="btn-primary btn-full text-sm" @click="handleTransferShares">
-                  🔄 股权转让
-                </button>
-                <button
-                  v-if="company?.stockInfo?.listed"
-                  class="btn-primary btn-full text-sm"
-                  @click="handleShareBuyback"
-                >
-                  📉 股份回购
-                </button>
+          <!-- 行业执照 -->
+          <div v-else-if="activeCapitalTab === 3">
+            <div class="section-title">📜 营业执照</div>
+            <div class="space-y-3 mb-4">
+              <div v-for="license in businessLicenses" :key="license.id" class="card">
+                <div class="flex justify-between items-start mb-2">
+                  <div>
+                    <div class="font-semibold">{{ license.name }}</div>
+                    <div class="text-xs text-white/50 mt-1">{{ license.description }}</div>
+                  </div>
+                  <span 
+                    class="px-2 py-1 rounded-full text-xs font-semibold"
+                    :class="{
+                      'bg-green-500/20 text-green-400': license.status === 'valid',
+                      'bg-amber-500/20 text-amber-400': license.status === 'pending',
+                      'bg-red-500/20 text-red-400': license.status === 'expired' || license.status === 'revoked'
+                    }"
+                  >
+                    {{ license.status === 'valid' ? '有效' : license.status === 'pending' ? '办理中' : license.status === 'expired' ? '已过期' : '已吊销' }}
+                  </span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs mt-3 pt-3 border-t border-white/10">
+                  <div>
+                    <span class="text-white/50">发证机关:</span>
+                    <span class="ml-1">{{ license.issuingAuthority }}</span>
+                  </div>
+                  <div v-if="license.issueDate">
+                    <span class="text-white/50">发证日期:</span>
+                    <span class="ml-1">{{ license.issueDate }}</span>
+                  </div>
+                  <div v-if="license.expireDate">
+                    <span class="text-white/50">有效期至:</span>
+                    <span class="ml-1">{{ license.expireDate }}</span>
+                  </div>
+                </div>
+                <div v-if="license.effect" class="mt-2 text-xs text-green-400">
+                  ✅ {{ license.effect }}
+                </div>
+              </div>
+            </div>
+
+            <div class="section-title">🏛️ 行业协会</div>
+            <div class="space-y-3">
+              <div v-for="assoc in industryAssociations" :key="assoc.id" class="card">
+                <div class="flex justify-between items-start mb-2">
+                  <div>
+                    <div class="font-semibold">{{ assoc.name }}</div>
+                    <div class="text-xs text-white/50 mt-1">
+                      {{ assoc.type === 'national' ? '全国性协会' : assoc.type === 'provincial' ? '省级协会' : '市级协会' }}
+                    </div>
+                  </div>
+                  <span 
+                    class="px-2 py-1 rounded-full text-xs font-semibold"
+                    :class="assoc.joined ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/50'"
+                  >
+                    {{ assoc.joined ? '已加入' : '未加入' }}
+                  </span>
+                </div>
+                <div class="mt-3 pt-3 border-t border-white/10">
+                  <div class="text-xs text-white/50 mb-2">会员权益:</div>
+                  <div class="flex flex-wrap gap-1">
+                    <span v-for="(benefit, idx) in assoc.benefits" :key="idx" class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
+                      {{ benefit }}
+                    </span>
+                  </div>
+                </div>
+                <div class="flex justify-between items-center mt-3">
+                  <div class="text-xs text-amber-400">
+                    会费: {{ formatMoney(assoc.membershipFee) }}/年
+                  </div>
+                  <button 
+                    v-if="!assoc.joined"
+                    class="btn-primary text-xs px-3 py-1"
+                    @click="handleJoinAssociation(assoc.id)"
+                  >
+                    申请加入
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- 三条红线 -->
-          <div v-else-if="activeCapitalTab === 3">
+          <div v-else-if="activeCapitalTab === 4">
             <div class="section-title">📊 三条红线</div>
             <div class="card mb-4">
               <div class="text-xs text-white/50 mb-3">实时监测房地产企业负债情况</div>
@@ -1291,7 +1475,7 @@
           </div>
 
           <!-- 财务报表 -->
-          <div v-else-if="activeCapitalTab === 4">
+          <div v-else-if="activeCapitalTab === 5">
             <div class="section-title">📋 财务报表</div>
             <div class="card mb-4">
               <div class="font-bold mb-3">资产负债表</div>
@@ -1529,57 +1713,231 @@
 
         <!-- 治理系统页面 -->
         <div v-else-if="activeTab === 'governance'">
-          <div class="section-title">🏛️ 公司治理</div>
+          <div class="grid grid-cols-3 gap-2 mb-4">
+            <button
+              v-for="(tab, idx) in governanceTabs"
+              :key="idx"
+              class="btn-primary text-sm py-2"
+              :class="activeGovernanceTab === idx ? 'bg-amber-500' : ''"
+              @click="activeGovernanceTab = idx"
+            >
+              {{ tab }}
+            </button>
+          </div>
 
-          <div class="module-btn mb-3 cursor-pointer" @click="showToast('高管团队功能开发中')">
-            <div class="module-btn__left">
-              <div class="module-btn__icon">👔</div>
-              <div class="module-btn__content">
-                <div class="module-btn__title">高管团队</div>
-                <div class="module-btn__subtitle">招聘和管理公司高管</div>
-              </div>
+          <!-- 高管团队 -->
+          <div v-if="activeGovernanceTab === 0">
+            <div class="section-title">👔 高管团队</div>
+            <div v-if="(company?.executives?.length || 0) === 0" class="card" style="text-align: center; color: #64748b; padding: 40px;">
+              暂无高管
             </div>
-            <div class="module-btn__right">
-              <div class="module-btn__arrow">→</div>
+            <div v-else v-for="exec in company?.executives" :key="exec.id" class="card mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-2xl">👔</div>
+                <div class="flex-1">
+                  <div class="font-semibold">{{ exec.name }}</div>
+                  <div class="text-white/50 text-sm">{{ exec.position }}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-amber-400 font-semibold">{{ formatMoney(exec.salary) }}</div>
+                  <div class="text-white/50 text-xs">月薪</div>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-xs mt-3 pt-3 border-t border-white/10">
+                <div>
+                  <span class="text-white/50">能力:</span>
+                  <span class="text-green-400 ml-1">{{ exec.ability }}</span>
+                </div>
+                <div>
+                  <span class="text-white/50">忠诚度:</span>
+                  <span class="text-blue-400 ml-1">{{ exec.loyalty }}</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="module-btn mb-3 cursor-pointer" @click="showToast('组织架构功能开发中')">
-            <div class="module-btn__left">
-              <div class="module-btn__icon">🏢</div>
-              <div class="module-btn__content">
-                <div class="module-btn__title">组织架构</div>
-                <div class="module-btn__subtitle">设计和优化公司组织架构</div>
+          <!-- 组织架构 -->
+          <div v-else-if="activeGovernanceTab === 1">
+            <div class="section-title">🏢 组织架构</div>
+            <div class="card mb-4">
+              <div class="flex justify-between items-center mb-3">
+                <div class="font-bold">部门设置</div>
+                <div class="text-sm text-white/50">共 {{ organizationStructure.departments.length }} 个部门</div>
+              </div>
+              <div class="space-y-2">
+                <div v-for="dept in organizationStructure.departments" :key="dept.id" class="bg-white/5 rounded-lg p-3">
+                  <div class="flex justify-between items-center">
+                    <div class="font-semibold">{{ dept.name }}</div>
+                    <div class="text-xs text-white/50">预算: {{ formatMoney(dept.budget) }}</div>
+                  </div>
+                  <div class="text-xs text-white/50 mt-1">{{ dept.description }}</div>
+                </div>
               </div>
             </div>
-            <div class="module-btn__right">
-              <div class="module-btn__arrow">→</div>
+            <div class="card">
+              <div class="flex justify-between items-center">
+                <div class="font-bold">员工总数</div>
+                <div class="text-2xl font-bold text-blue-400">{{ organizationStructure.totalEmployees || company?.employees?.length || 0 }}</div>
+              </div>
             </div>
           </div>
 
-          <div class="module-btn mb-3 cursor-pointer" @click="showToast('风控体系功能开发中')">
-            <div class="module-btn__left">
-              <div class="module-btn__icon">🛡️</div>
-              <div class="module-btn__content">
-                <div class="module-btn__title">风控体系</div>
-                <div class="module-btn__subtitle">建立风险控制和管理体系</div>
-              </div>
+          <!-- 员工管理 -->
+          <div v-else-if="activeGovernanceTab === 2">
+            <div class="section-title">👥 我的员工</div>
+            <div v-if="(company?.employees?.length || 0) === 0" class="card" style="text-align: center; color: #64748b; padding: 40px;">
+              暂无员工，去招聘市场看看吧！
             </div>
-            <div class="module-btn__right">
-              <div class="module-btn__arrow">→</div>
+            <div v-else v-for="emp in company?.employees" :key="emp.id" class="card mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-2xl">👤</div>
+                <div class="flex-1">
+                  <div class="font-semibold">{{ emp.name }}</div>
+                  <div class="text-white/50 text-sm">{{ emp.position }}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-amber-400 font-semibold">{{ formatMoney(emp.salary) }}</div>
+                  <div class="text-white/50 text-xs">月薪</div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="module-btn cursor-pointer" @click="showToast('内部审计功能开发中')">
-            <div class="module-btn__left">
-              <div class="module-btn__icon">📊</div>
-              <div class="module-btn__content">
-                <div class="module-btn__title">内部审计</div>
-                <div class="module-btn__subtitle">定期审计，防范经营风险</div>
+          <!-- 招聘市场 -->
+          <div v-else-if="activeGovernanceTab === 3">
+            <div class="section-title">🎯 招聘市场</div>
+            <div v-for="emp in availableEmployees" :key="emp.id" class="card mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-2xl">👤</div>
+                <div class="flex-1">
+                  <div class="font-semibold">{{ emp.name }}</div>
+                  <div class="text-white/50 text-sm">{{ emp.position }}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-amber-400 font-semibold">{{ formatMoney(emp.salary) }}</div>
+                  <div class="text-white/50 text-xs">月薪</div>
+                </div>
+              </div>
+              <button class="btn-primary btn-full mt-3" @click="showToast('招聘' + emp.name)">招聘</button>
+            </div>
+          </div>
+
+          <!-- 风控体系 -->
+          <div v-else-if="activeGovernanceTab === 4">
+            <div class="section-title">🛡️ 风控体系</div>
+            <div class="card mb-4">
+              <div class="flex justify-between items-center mb-4">
+                <div>
+                  <div class="text-2xl font-bold">Lv.{{ riskControlSystem.level }}</div>
+                  <div class="text-white/50 text-sm">风控等级</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xs text-white/50">审计频率</div>
+                  <div class="font-semibold">
+                    {{ riskControlSystem.auditFrequency === 'monthly' ? '每月' : riskControlSystem.auditFrequency === 'quarterly' ? '每季度' : '每年' }}
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="module-btn__right">
-              <div class="module-btn__arrow">→</div>
+
+            <div class="section-title">📋 风控政策</div>
+            <div class="space-y-3">
+              <div v-for="policy in riskControlSystem.policies" :key="policy.id" class="card">
+                <div class="flex justify-between items-start mb-2">
+                  <div>
+                    <div class="font-semibold">{{ policy.name }}</div>
+                    <div class="text-xs text-white/50 mt-1">{{ policy.description }}</div>
+                  </div>
+                  <span 
+                    class="px-2 py-1 rounded-full text-xs font-semibold"
+                    :class="policy.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/50'"
+                  >
+                    {{ policy.status === 'active' ? '生效中' : '未启用' }}
+                  </span>
+                </div>
+                <div class="mt-3 pt-3 border-t border-white/10">
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="text-white/50">类型</span>
+                    <span>
+                      {{ policy.type === 'finance' ? '财务风险' : policy.type === 'operation' ? '运营风险' : policy.type === 'legal' ? '法律风险' : '市场风险' }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between text-xs mb-2">
+                    <span class="text-white/50">有效性</span>
+                    <span class="text-green-400">{{ policy.effectiveness }}%</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" :style="{ width: policy.effectiveness + '%' }"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 内部审计 -->
+          <div v-else-if="activeGovernanceTab === 5">
+            <div class="section-title">📊 内部审计</div>
+            <div v-if="internalAudits.length === 0" class="card" style="text-align: center; color: #64748b; padding: 40px;">
+              暂无审计记录
+            </div>
+            <div v-else v-for="audit in internalAudits" :key="audit.id" class="card mb-3">
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <div class="font-semibold">{{ audit.name }}</div>
+                  <div class="text-xs text-white/50 mt-1">
+                    {{ audit.type === 'financial' ? '财务审计' : audit.type === 'operational' ? '运营审计' : audit.type === 'compliance' ? '合规审计' : '专项审计' }}
+                  </div>
+                </div>
+                <span 
+                  class="px-2 py-1 rounded-full text-xs font-semibold"
+                  :class="{
+                    'bg-green-500/20 text-green-400': audit.status === 'completed',
+                    'bg-amber-500/20 text-amber-400': audit.status === 'in_progress',
+                    'bg-white/10 text-white/50': audit.status === 'planned'
+                  }"
+                >
+                  {{ audit.status === 'completed' ? '已完成' : audit.status === 'in_progress' ? '进行中' : '计划中' }}
+                </span>
+              </div>
+              <div v-if="audit.startDate || audit.endDate" class="grid grid-cols-2 gap-2 text-xs mt-3 pt-3 border-t border-white/10">
+                <div v-if="audit.startDate">
+                  <span class="text-white/50">开始日期:</span>
+                  <span class="ml-1">{{ audit.startDate }}</span>
+                </div>
+                <div v-if="audit.endDate">
+                  <span class="text-white/50">结束日期:</span>
+                  <span class="ml-1">{{ audit.endDate }}</span>
+                </div>
+              </div>
+              <div v-if="audit.findings && audit.findings.length > 0" class="mt-3">
+                <div class="text-xs text-white/50 mb-2">审计发现:</div>
+                <div class="space-y-1">
+                  <div 
+                    v-for="finding in audit.findings" 
+                    :key="finding.id" 
+                    class="text-xs p-2 rounded bg-white/5"
+                  >
+                    <span 
+                      :class="{
+                        'text-red-400': finding.severity === 'critical' || finding.severity === 'high',
+                        'text-amber-400': finding.severity === 'medium',
+                        'text-blue-400': finding.severity === 'low'
+                      }"
+                    >
+                      [{{ finding.severity === 'critical' ? '严重' : finding.severity === 'high' ? '高' : finding.severity === 'medium' ? '中' : '低' }}]
+                    </span>
+                    <span class="ml-1">{{ finding.description }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="audit.recommendations && audit.recommendations.length > 0" class="mt-3">
+                <div class="text-xs text-white/50 mb-2">整改建议:</div>
+                <ul class="text-xs space-y-1">
+                  <li v-for="(rec, idx) in audit.recommendations" :key="idx" class="text-green-400">
+                    • {{ rec }}
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -1736,8 +2094,42 @@ const activeInvestmentTab = ref(0)
 const activeMarketingTab = ref(0)
 const activeOperationTab = ref(0)
 const activeCapitalTab = ref(0)
+const activeGovernanceTab = ref(0)
 const selectedCity = ref<string | null>(null)
+const selectedBank = ref<string | null>(null)
 const timeSpeed = ref(1) // 时间流速：1X, 2X, 3X
+const timePaused = ref(false)
+
+const loanForm = ref({
+  amount: 1000000,
+  term: 12
+})
+
+const activeLoans = ref<any[]>([])
+let gameInterval: ReturnType<typeof setInterval> | null = null
+
+// 时间流速对应间隔（毫秒）
+// 1X: 5秒 = 1天
+// 2X: 3秒 = 1天
+// 3X: 2秒 = 1天
+const SPEED_INTERVALS = { 1: 5000, 2: 3000, 3: 2000 }
+
+function startGameLoop() {
+  if (gameInterval) clearInterval(gameInterval)
+  if (timePaused.value) return
+  gameInterval = setInterval(() => {
+    if (!timePaused.value) {
+      gameStore.advanceDay()
+    }
+  }, SPEED_INTERVALS[timeSpeed.value as 1 | 2 | 3] || 5000)
+}
+
+function stopGameLoop() {
+  if (gameInterval) {
+    clearInterval(gameInterval)
+    gameInterval = null
+  }
+}
 
 // 开发规划相关
 const selectedLandForDevelopment = ref<string | null>(null)
@@ -1773,8 +2165,9 @@ const secondRowTabs = [
 
 const investmentTabs = ['城市研究', '土地市场', '土地储备', '市场趋势', '竞争对手', '资产交易']
 const marketingTabs = ['品牌建设', '预售开盘', '营销蓄客']
-const operationTabs = ['员工管理', '招聘市场']
-const capitalTabs = ['银行中心', '金融中心', '股东操作', '三条红线', '财务报表']
+const operationTabs = ['运营概览']
+const governanceTabs = ['高管团队', '组织架构', '员工管理', '招聘市场', '风控体系', '内部审计']
+const capitalTabs = ['银行中心', '金融中心', '股东操作', '行业执照', '三条红线', '财务报表']
 
 const company = computed(() => gameStore.company)
 const cash = computed(() => gameStore.cash)
@@ -1800,6 +2193,17 @@ const threeRedLines = computed(() => company.value?.threeRedLines || {
   cashShortDebtRatio: 1.5
 })
 
+const businessLicenses = computed(() => gameStore.getBusinessLicenses())
+const industryAssociations = computed(() => gameStore.getIndustryAssociations())
+const organizationStructure = computed(() => gameStore.getOrganizationStructure())
+const riskControlSystem = computed(() => gameStore.getRiskControlSystem())
+const internalAudits = computed(() => gameStore.getInternalAudits())
+
+const currentBank = computed(() => {
+  if (!selectedBank.value) return null
+  return banks.find(b => b.id === selectedBank.value) || null
+})
+
 const qualificationProgress = computed(() => gameStore.getQualificationProgress())
 
 const housingPriceIndex = computed(() => macroEconomy.value.housingPriceIndex || 1.0)
@@ -1808,8 +2212,8 @@ const economicCycle = computed(() => '稳定期')
 
 const gameTime = computed(() => {
   const time = gameStore.gameState?.gameTime
-  if (!time) return '2008年1月'
-  return `${time.year}年${time.month + 1}月`
+  if (!time) return '2008年1月1日'
+  return `${time.year}年${time.month + 1}月${time.day || 1}日`
 })
 
 const qualificationLevel = computed(() => {
@@ -1861,8 +2265,19 @@ function handleQualificationUpgrade() {
 
 function setTimeSpeed(speed: number) {
   timeSpeed.value = speed
-  // 1X: 5秒=1天, 2X: 3秒=1天, 3X: 2秒=1天
-  // 实际游戏中可以用这个值来控制时间流逝速度
+  timePaused.value = false
+  gameStore.setTimeSpeed(speed)
+  startGameLoop()
+}
+
+function handleTogglePause() {
+  timePaused.value = !timePaused.value
+  gameStore.toggleTimePause()
+  if (timePaused.value) {
+    stopGameLoop()
+  } else {
+    startGameLoop()
+  }
 }
 
 // 银行贷款相关
@@ -1878,6 +2293,21 @@ const ipoRequirements = computed(() => gameStore.getIPORequirements())
 
 const completedProjectsCount = computed(() => {
   return projects.value.filter(p => p.status === 'completed').length
+})
+
+const ongoingProjectsCount = computed(() => {
+  return projects.value.filter(p => p.status !== 'completed').length
+})
+
+const monthlySalaryCost = computed(() => {
+  let total = 0
+  if (company.value?.employees) {
+    total += company.value.employees.reduce((sum: number, emp: any) => sum + (emp.salary || 0), 0)
+  }
+  if (company.value?.executives) {
+    total += company.value.executives.reduce((sum: number, exec: any) => sum + (exec.salary || 0), 0)
+  }
+  return total
 })
 
 const financialStatements = computed(() => gameStore.generateFinancialStatements())
@@ -1926,6 +2356,38 @@ function handleAddShareholder() {
 
 function handleTransferShares() {
   showToast('股权转让功能开发中')
+}
+
+// 银行贷款相关函数
+function calculateMonthlyPayment(): number {
+  const principal = loanForm.value.amount
+  const monthlyRate = getActualInterestRate(selectedBank.value || '') / 12
+  const term = loanForm.value.term
+  if (monthlyRate === 0) return principal / term
+  return (principal * monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1)
+}
+
+function calculateTotalInterest(): number {
+  const monthlyPayment = calculateMonthlyPayment()
+  const totalPayment = monthlyPayment * loanForm.value.term
+  return totalPayment - loanForm.value.amount
+}
+
+function handleApplyLoan() {
+  showToast('贷款申请已提交')
+}
+
+function handleRepayLoan(loanId: string, type: 'monthly' | 'full') {
+  showToast(type === 'monthly' ? '按月还款成功' : '提前结清成功')
+}
+
+function handleJoinAssociation(assocId: string) {
+  const success = gameStore.joinAssociation(assocId)
+  if (success) {
+    showToast('成功加入协会！')
+  } else {
+    showToast('加入失败，请检查条件')
+  }
 }
 
 function formatNumber(num: number): string {
@@ -2467,6 +2929,8 @@ function showToast(message: string) {
 onMounted(() => {
   gameStore.checkAndRefreshLandMarket()
   gameStore.getAllSaves()
+  // 启动游戏循环
+  startGameLoop()
   // 更新上次存档时间
   const autoSave = gameStore.saveSlots.find(s => s.id === 'auto')
   if (autoSave) {
