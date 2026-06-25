@@ -1635,7 +1635,7 @@ export const useGameStore = defineStore('game', () => {
           totalAssets: { current: company.value.totalAssets, required: company.value.totalAssets },
           completedProjects: { current: projects.value.filter(p => p.status === 'completed').length, required: 999 },
           totalSoldArea: { current: company.value.totalSoldArea || 0, required: 9999999 },
-          socialReputation: { current: player.value?.socialStatus?.reputation || 0, required: 100 },
+          socialReputation: { current: gameState.value?.player?.socialStatus?.reputation || 0, required: 100 },
           technicalPersonnel: { current: company.value.technicalPersonnel || 0, required: 100 }
         },
         canUpgrade: false
@@ -1647,7 +1647,7 @@ export const useGameStore = defineStore('game', () => {
 
     const completedProjects = projects.value.filter(p => p.status === 'completed').length
     const totalSoldArea = company.value.totalSoldArea || 0
-    const socialReputation = player.value?.socialStatus?.reputation || 0
+    const socialReputation = gameState.value?.player?.socialStatus?.reputation || 0
     const technicalPersonnel = company.value.technicalPersonnel || 0
 
     return {
